@@ -1,9 +1,9 @@
 node_modules/
 dist/
-.dev.vars
 .wrangler/
+.dev.vars
 .env
-.env.*
-!.env.example
-*.log
+.env.local
+.env.*.local
+*.tsbuildinfo
 .DS_Store

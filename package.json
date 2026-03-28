@@ -1,0 +1,15 @@
+{
+  "name": "flowdocs",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["packages/shared", "packages/web", "packages/api"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w packages/web\" \"npm run dev -w packages/api\"",
+    "build": "npm run build -w packages/shared && npm run build -w packages/web && npm run build -w packages/api",
+    "typecheck": "tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  }
+}
