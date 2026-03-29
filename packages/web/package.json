@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@flowdocs/shared": "*",
+    "@flowdocs/shared": "workspace:*",
     "@tanstack/react-query": "^5.0.0",
     "@tanstack/react-query-devtools": "^5.0.0",
     "zustand": "^4.5.0",

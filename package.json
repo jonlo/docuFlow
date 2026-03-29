@@ -2,14 +2,16 @@
   "name": "flowdocs",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["packages/shared", "packages/web", "packages/api"],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w packages/web\" \"npm run dev -w packages/api\"",
-    "build": "npm run build -w packages/shared && npm run build -w packages/web && npm run build -w packages/api",
+    "dev": "concurrently \"pnpm --filter @flowdocs/web dev\" \"pnpm --filter @flowdocs/api dev\"",
+    "build": "pnpm --filter @flowdocs/shared build && pnpm --filter @flowdocs/web build && pnpm --filter @flowdocs/api build",
     "typecheck": "tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "typescript": "^5.4.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"]
   }
 }

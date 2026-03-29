@@ -12,7 +12,7 @@ and attach documents from Notion or Confluence to those tasks.
 
 ## Key decisions
 
-- **Monorepo** with npm workspaces: `packages/web`, `packages/api`, `packages/shared`
+- **Monorepo** with pnpm workspaces: `packages/web`, `packages/api`, `packages/shared`
 - **Frontend**: React 18 + TypeScript + Vite → deploys to **Cloudflare Pages**
 - **Backend**: Hono + TypeScript → deploys to **Cloudflare Workers**
 - **Shared types**: `packages/shared` — imported by both web and api, no runtime deps
@@ -82,16 +82,16 @@ Sessions are stored in KV as `session:{uuid}` with a 7-day TTL.
 ## Local dev
 
 ```bash
-npm install
+pnpm install
 
 # Frontend → http://localhost:5173
-npm run dev -w packages/web
+pnpm --filter @flowdocs/web dev
 
 # Backend Worker → http://localhost:8787
-npm run dev -w packages/api
+pnpm --filter @flowdocs/api dev
 
 # Both simultaneously (root)
-npm run dev
+pnpm dev
 ```
 
 ---
