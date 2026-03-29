@@ -1,0 +1,11 @@
+# Copy this file to .dev.vars and fill in real values for local development.
+# NEVER commit .dev.vars — it is gitignored.
+#
+# Set production secrets via:
+#   wrangler secret put GOOGLE_CLIENT_ID
+#   wrangler secret put GOOGLE_CLIENT_SECRET
+#   wrangler secret put SESSION_SECRET
+
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+SESSION_SECRET=a-random-secret-string-at-least-32-chars

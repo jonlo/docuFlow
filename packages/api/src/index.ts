@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { googleRoutes } from "./google/routes";
 import { authRoutes } from "./routes/auth";
-import { calendarRoutes } from "./routes/calendar";
 import { documentRoutes } from "./routes/documents";
 import type { Env } from "./types";
 
@@ -16,8 +16,13 @@ app.use("*", cors({
   credentials: true,
 }));
 
-app.route("/api/auth",      authRoutes);
-app.route("/api/calendar",  calendarRoutes);
+// Google domain: /api/auth/google/*, /api/events
+app.route("/api", googleRoutes);
+
+// Auth: /api/auth/status, /api/auth/notion, /api/auth/:provider
+app.route("/api/auth", authRoutes);
+
+// Documents: /api/documents/*
 app.route("/api/documents", documentRoutes);
 
 app.get("/api/health", (c) => c.json({ status: "ok", ts: new Date().toISOString() }));
