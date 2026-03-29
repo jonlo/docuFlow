@@ -18,6 +18,12 @@ export interface GoogleCalendarEventDateTime {
   timeZone?: string;
 }
 
+export interface GoogleCalendarAttendee {
+  email: string;
+  displayName?: string;
+  responseStatus?: string;
+}
+
 export interface GoogleCalendarEvent {
   id: string;
   summary?: string;
@@ -26,6 +32,7 @@ export interface GoogleCalendarEvent {
   end: GoogleCalendarEventDateTime;
   htmlLink?: string;
   colorId?: string;
+  attendees?: GoogleCalendarAttendee[];
 }
 
 export interface GoogleCalendarEventsResponse {

@@ -1,3 +1,4 @@
+import type { CreateEventBody, UpdateEventBody, ContactResult } from "@flowdocs/shared";
 import type {
   GoogleCalendarEvent,
   GoogleCalendarEventsResponse,
@@ -60,6 +61,82 @@ export async function getUserInfo(accessToken: string): Promise<GoogleUserInfo> 
   });
   if (!res.ok) throw new Error("Failed to fetch user info");
   return res.json() as Promise<GoogleUserInfo>;
+}
+
+export async function createCalendarEvent(
+  accessToken: string,
+  body: CreateEventBody,
+  calendarId = "primary"
+): Promise<GoogleCalendarEvent> {
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        summary: body.title,
+        start:   { dateTime: body.start },
+        end:     { dateTime: body.end },
+        attendees: body.attendees?.map((a) => ({ email: a.email, displayName: a.name })),
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`Create event failed: ${res.statusText}`);
+  return res.json() as Promise<GoogleCalendarEvent>;
+}
+
+export async function updateCalendarEvent(
+  accessToken: string,
+  googleEventId: string,
+  body: UpdateEventBody,
+  calendarId = "primary"
+): Promise<GoogleCalendarEvent> {
+  const patch: Record<string, unknown> = {};
+  if (body.title     !== undefined) patch["summary"]   = body.title;
+  if (body.start     !== undefined) patch["start"]     = { dateTime: body.start };
+  if (body.end       !== undefined) patch["end"]       = { dateTime: body.end };
+  if (body.attendees !== undefined) patch["attendees"] = body.attendees.map((a) => ({ email: a.email, displayName: a.name }));
+
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(googleEventId)}`,
+    {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }
+  );
+  if (!res.ok) throw new Error(`Update event failed: ${res.statusText}`);
+  return res.json() as Promise<GoogleCalendarEvent>;
+}
+
+export async function deleteCalendarEvent(
+  accessToken: string,
+  googleEventId: string,
+  calendarId = "primary"
+): Promise<void> {
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(googleEventId)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok && res.status !== 410) throw new Error(`Delete event failed: ${res.statusText}`);
+}
+
+export async function searchContacts(
+  accessToken: string,
+  query: string
+): Promise<ContactResult[]> {
+  const params = new URLSearchParams({ query, readMask: "names,emailAddresses", pageSize: "5" });
+  const res = await fetch(
+    `https://people.googleapis.com/v1/people:searchContacts?${params}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return [];
+  const data = await res.json() as { results?: { person: { names?: { displayName: string }[]; emailAddresses?: { value: string }[] } }[] };
+  return (data.results ?? []).flatMap((r) => {
+    const email = r.person.emailAddresses?.[0]?.value;
+    if (!email) return [];
+    return [{ email, name: r.person.names?.[0]?.displayName }];
+  });
 }
 
 export async function listCalendarEvents(

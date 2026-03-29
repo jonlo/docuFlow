@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS events (
   all_day         INTEGER NOT NULL DEFAULT 0,
   html_link       TEXT,
   color_id        TEXT,
+  attendees       TEXT,
   synced_at       TEXT NOT NULL DEFAULT (datetime('now')),
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))

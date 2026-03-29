@@ -1,0 +1,172 @@
+/* Scoped rbc overrides — all selectors prefixed with .flowdocs-calendar */
+
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-calendar {
+  background: #FFFFFF;
+  border-radius: 12px;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #1A1A2E;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-toolbar {
+  padding: 12px 16px;
+  border-bottom: 1px solid #E2E2EE;
+  background: #FFFFFF;
+  gap: 8px;
+}
+
+.flowdocs-calendar .rbc-toolbar button {
+  color: #6B6B8A;
+  border: 1px solid #E2E2EE;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  background: #FFFFFF;
+  transition: background 0.15s, color 0.15s;
+}
+
+.flowdocs-calendar .rbc-toolbar button:hover {
+  background: #F5F5FC;
+  color: #1A1A2E;
+}
+
+.flowdocs-calendar .rbc-toolbar button.rbc-active {
+  background: #EAE8F8;
+  color: #6B5ECD;
+  border-color: #C4BAFF;
+  box-shadow: none;
+}
+
+.flowdocs-calendar .rbc-toolbar-label {
+  font-weight: 600;
+  font-size: 15px;
+  color: #1A1A2E;
+}
+
+/* ── Header row (day names) ──────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-header {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E2EE;
+  border-left: 1px solid #E2E2EE;
+  color: #6B6B8A;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 4px;
+}
+
+.flowdocs-calendar .rbc-header + .rbc-header {
+  border-left: 1px solid #E2E2EE;
+}
+
+/* ── Time gutter ─────────────────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: none;
+}
+
+.flowdocs-calendar .rbc-label {
+  color: #A0A0BE;
+  font-size: 11px;
+  padding-right: 8px;
+  text-align: right;
+}
+
+/* ── Grid lines ──────────────────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-timeslot-group {
+  border-bottom: 1px solid #E2E2EE;
+  min-height: 40px;
+}
+
+.flowdocs-calendar .rbc-time-slot {
+  border-top: none;
+}
+
+.flowdocs-calendar .rbc-day-slot .rbc-time-slot {
+  border-top: 1px dashed #F0F0F8;
+}
+
+.flowdocs-calendar .rbc-time-content {
+  border-top: 1px solid #E2E2EE;
+}
+
+.flowdocs-calendar .rbc-time-content > * + * > * {
+  border-left: 1px solid #E2E2EE;
+}
+
+/* ── Today column highlight ──────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-today {
+  background: #EAE8F8;
+}
+
+/* ── Current time indicator ──────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-current-time-indicator {
+  background: #6B5ECD;
+  height: 2px;
+}
+
+.flowdocs-calendar .rbc-current-time-indicator::before {
+  background: #6B5ECD;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3px;
+}
+
+/* ── Event blocks ────────────────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-event {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 6px;
+  box-shadow: none;
+  outline: none;
+}
+
+.flowdocs-calendar .rbc-event:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #6B5ECD44;
+}
+
+.flowdocs-calendar .rbc-event-label {
+  display: none; /* we render our own time sub-label */
+}
+
+.flowdocs-calendar .rbc-selected {
+  box-shadow: 0 0 0 2px #6B5ECD66;
+}
+
+/* ── Month view ──────────────────────────────────────────────────────────── */
+.flowdocs-calendar .rbc-month-view {
+  border: none;
+  border-radius: 0;
+}
+
+.flowdocs-calendar .rbc-month-row {
+  border-top: 1px solid #E2E2EE;
+}
+
+.flowdocs-calendar .rbc-day-bg + .rbc-day-bg {
+  border-left: 1px solid #E2E2EE;
+}
+
+.flowdocs-calendar .rbc-off-range-bg {
+  background: #F5F5FC;
+}
+
+.flowdocs-calendar .rbc-date-cell {
+  color: #6B6B8A;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.flowdocs-calendar .rbc-date-cell.rbc-now {
+  color: #6B5ECD;
+  font-weight: 600;
+}

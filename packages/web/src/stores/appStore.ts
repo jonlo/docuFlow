@@ -2,6 +2,22 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { Integration, Task } from "@flowdocs/shared";
 
+export interface EventFormValues {
+  title: string;
+  date: string;       // YYYY-MM-DD
+  start: string;      // ISO 8601
+  end: string;        // ISO 8601
+  attendees: { email: string; name?: string }[];
+}
+
+interface EventModalState {
+  open: boolean;
+  mode: "create" | "edit";
+  initialData?: Partial<EventFormValues>;
+  eventId?: string;
+  googleEventId?: string;
+}
+
 interface AppState {
   integrations: Integration[];
   setIntegration: (integration: Integration) => void;
@@ -16,6 +32,15 @@ interface AppState {
   // Local task cache (TanStack Query is the real source of truth)
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
+
+  eventModal: EventModalState;
+  openEventModal: (
+    mode: "create" | "edit",
+    initialData?: Partial<EventFormValues>,
+    eventId?: string,
+    googleEventId?: string
+  ) => void;
+  closeEventModal: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -45,6 +70,12 @@ export const useAppStore = create<AppState>()(
 
       tasks: [],
       setTasks: (tasks) => set({ tasks }),
+
+      eventModal: { open: false, mode: "create" },
+      openEventModal: (mode, initialData, eventId, googleEventId) =>
+        set({ eventModal: { open: true, mode, initialData, eventId, googleEventId } }),
+      closeEventModal: () =>
+        set({ eventModal: { open: false, mode: "create" } }),
     }),
     { name: "FlowDocs" }
   )

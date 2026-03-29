@@ -5,6 +5,10 @@ export type {
   CalendarEvent,
   CalendarList,
   CalendarEventsQuery,
+  Attendee,
+  CreateEventBody,
+  UpdateEventBody,
+  ContactResult,
 } from "./google/index";
 
 // ── Labels ────────────────────────────────────────────────────────────────────

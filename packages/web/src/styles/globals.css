@@ -12,8 +12,8 @@
 html, body, #root { height: 100%; width: 100%; overflow: hidden; }
 
 body {
-  background: #0f0f10;
-  color: #f4f4f5;
+  background: #EEEEF8;
+  color: #1A1A2E;
   font-family: 'DM Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -31,8 +31,12 @@ body {
 
 .main-content { overflow: hidden; display: flex; flex-direction: column; }
 
-.task-panel { border-left: 1px solid #2e2e33; background: #18181b; overflow-y: auto; }
+.task-panel {
+  border-left: 1px solid #E2E2EE;
+  background: #FFFFFF;
+  overflow-y: auto;
+}
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2e2e33; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #C8C8DC; border-radius: 2px; }

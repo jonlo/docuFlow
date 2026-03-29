@@ -39,23 +39,25 @@ export function AuthGate({ children }: Props): JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+      <div className="flex items-center justify-center h-screen bg-surface-base">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary" />
       </div>
     );
   }
 
   if (!auth?.google?.connected) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <h1 className="text-2xl font-semibold text-zinc-100">FlowDocs</h1>
-        <p className="text-zinc-400">Connect your Google Calendar to get started.</p>
-        <button
-          onClick={handleConnect}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
-        >
-          Connect Google Calendar
-        </button>
+      <div className="flex items-center justify-center h-screen bg-surface-base">
+        <div className="flex flex-col items-center gap-4 bg-surface-raised rounded-2xl shadow-sm border border-surface-border px-10 py-10">
+          <h1 className="font-display font-bold text-xl text-text-base">FlowDocs</h1>
+          <p className="text-text-muted text-sm">Connect your Google Calendar to get started.</p>
+          <button
+            onClick={handleConnect}
+            className="mt-2 px-5 py-2.5 bg-accent-primary hover:bg-accent-secondary text-white rounded-lg font-medium text-sm transition-colors"
+          >
+            Connect Google Calendar
+          </button>
+        </div>
       </div>
     );
   }

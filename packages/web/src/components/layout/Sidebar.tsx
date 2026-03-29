@@ -2,18 +2,23 @@ import { useAppStore } from "@/stores/appStore";
 import { IntegrationBadge } from "@/components/auth/IntegrationBadge";
 
 export function Sidebar(): JSX.Element {
-  const { calendarView, setCalendarView } = useAppStore();
+  const openEventModal = useAppStore((s) => s.openEventModal);
 
   return (
-    <aside style={{ background: "#111113", borderRight: "1px solid #2e2e33", padding: "16px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 16 }}>FlowDocs</div>
-      {(["month", "week", "day"] as const).map((v) => (
-        <button key={v} onClick={() => setCalendarView(v)}
-          style={{ textAlign: "left", padding: "6px 8px", borderRadius: 6, border: "none", cursor: "pointer", background: calendarView === v ? "rgba(99,102,241,0.15)" : "transparent", color: calendarView === v ? "#6366f1" : "#a1a1aa", fontSize: 13 }}>
-          {v.charAt(0).toUpperCase() + v.slice(1)}
-        </button>
-      ))}
-      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+    <aside className="flex flex-col gap-1 h-full bg-surface-raised border-r border-surface-border px-3 py-4">
+      <div className="font-display font-bold text-sm tracking-wide text-text-base mb-4 px-2">
+        FlowDocs
+      </div>
+
+      <button
+        onClick={() => openEventModal("create")}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-accent-primary text-white hover:bg-accent-primary/90 transition-colors"
+      >
+        <span className="text-base leading-none">+</span>
+        New Event
+      </button>
+
+      <div className="mt-auto flex flex-col gap-1">
         <IntegrationBadge provider="google" />
         <IntegrationBadge provider="notion" />
         <IntegrationBadge provider="confluence" />

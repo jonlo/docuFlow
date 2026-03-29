@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import type { Env } from "../types";
+import type { CreateEventBody, UpdateEventBody } from "@flowdocs/shared";
+import * as googleApi from "./api";
 import * as googleAuth from "./auth";
 import * as googleCalendar from "./calendar";
 import * as kv from "./kv";
@@ -84,5 +86,88 @@ googleRoutes.get("/events", async (c) => {
       return c.json({ error: "Session expired", code: "SESSION_EXPIRED" }, 401);
     }
     throw err;
+  }
+});
+
+// POST /api/events
+googleRoutes.post("/events", async (c) => {
+  const sessionId = getCookie(c, "session");
+  const session   = sessionId ? await kv.getSession(c.env.FLOWDOCS_KV, sessionId) : null;
+  if (!session?.googleAccessToken || !session.userId || !sessionId) {
+    return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+  }
+  try {
+    const body = await c.req.json<CreateEventBody>();
+    const accessToken = await ensureFreshToken(sessionId, session, c.env);
+    const event = await googleCalendar.createEvent(session.userId, accessToken, body, c.env);
+    return c.json(event, 201);
+  } catch (err) {
+    if (err instanceof TokenError) return c.json({ error: "Session expired", code: "SESSION_EXPIRED" }, 401);
+    console.error(err);
+    return c.json({ error: "Google API error", code: "GOOGLE_API_ERROR" }, 502);
+  }
+});
+
+// PATCH /api/events/:id
+googleRoutes.patch("/events/:id", async (c) => {
+  const sessionId = getCookie(c, "session");
+  const session   = sessionId ? await kv.getSession(c.env.FLOWDOCS_KV, sessionId) : null;
+  if (!session?.googleAccessToken || !session.userId || !sessionId) {
+    return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+  }
+  try {
+    const id   = c.req.param("id");
+    const body = await c.req.json<UpdateEventBody>();
+    const accessToken = await ensureFreshToken(sessionId, session, c.env);
+    const event = await googleCalendar.updateEvent(id, session.userId, accessToken, body, c.env);
+    return c.json(event);
+  } catch (err) {
+    if (err instanceof TokenError) return c.json({ error: "Session expired", code: "SESSION_EXPIRED" }, 401);
+    if (err instanceof Error && (err as { code?: string }).code === "NOT_FOUND") {
+      return c.json({ error: "Event not found", code: "NOT_FOUND" }, 404);
+    }
+    console.error(err);
+    return c.json({ error: "Google API error", code: "GOOGLE_API_ERROR" }, 502);
+  }
+});
+
+// DELETE /api/events/:id
+googleRoutes.delete("/events/:id", async (c) => {
+  const sessionId = getCookie(c, "session");
+  const session   = sessionId ? await kv.getSession(c.env.FLOWDOCS_KV, sessionId) : null;
+  if (!session?.googleAccessToken || !session.userId || !sessionId) {
+    return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+  }
+  try {
+    const id = c.req.param("id");
+    const accessToken = await ensureFreshToken(sessionId, session, c.env);
+    await googleCalendar.deleteEvent(id, session.userId, accessToken, c.env);
+    return new Response(null, { status: 204 });
+  } catch (err) {
+    if (err instanceof TokenError) return c.json({ error: "Session expired", code: "SESSION_EXPIRED" }, 401);
+    if (err instanceof Error && (err as { code?: string }).code === "NOT_FOUND") {
+      return c.json({ error: "Event not found", code: "NOT_FOUND" }, 404);
+    }
+    console.error(err);
+    return c.json({ error: "Google API error", code: "GOOGLE_API_ERROR" }, 502);
+  }
+});
+
+// GET /api/contacts/search
+googleRoutes.get("/contacts/search", async (c) => {
+  const sessionId = getCookie(c, "session");
+  const session   = sessionId ? await kv.getSession(c.env.FLOWDOCS_KV, sessionId) : null;
+  if (!session?.googleAccessToken || !sessionId) {
+    return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+  }
+  const q = c.req.query("q") ?? "";
+  if (q.length < 2) return c.json([]);
+  try {
+    const accessToken = await ensureFreshToken(sessionId, session, c.env);
+    const results = await googleApi.searchContacts(accessToken, q);
+    return c.json(results);
+  } catch (err) {
+    if (err instanceof TokenError) return c.json({ error: "Session expired", code: "SESSION_EXPIRED" }, 401);
+    return c.json([]);
   }
 });

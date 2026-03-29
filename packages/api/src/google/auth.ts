@@ -9,9 +9,10 @@ export function buildConsentUrl(clientId: string, redirectUri: string, state: st
     redirect_uri:  redirectUri,
     response_type: "code",
     scope: [
-      "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/calendar.events",
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/contacts.readonly",
     ].join(" "),
     access_type: "offline",
     prompt:      "consent",

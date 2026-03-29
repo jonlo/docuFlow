@@ -17,6 +17,24 @@ export interface AuthStatus {
   confluence: Integration;
 }
 
+// ── Event mutations ───────────────────────────────────────────────────────────
+
+export interface Attendee {
+  email: string;
+  name?: string;
+}
+
+export interface CreateEventBody {
+  title: string;
+  start: string;        // ISO 8601
+  end: string;          // ISO 8601
+  attendees?: Attendee[];
+}
+
+export type UpdateEventBody = Partial<CreateEventBody>;
+
+export type ContactResult = Attendee;
+
 // ── Calendar ──────────────────────────────────────────────────────────────────
 
 export interface CalendarEvent {
@@ -30,6 +48,7 @@ export interface CalendarEvent {
   allDay: boolean;
   htmlLink?: string;
   colorId?: string;
+  attendees?: Attendee[];
 }
 
 export interface CalendarList {
