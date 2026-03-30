@@ -62,6 +62,9 @@ interface AppState {
     taskId?: string
   ) => void;
   closeTaskModal: () => void;
+
+  highlightEventId: string | null;
+  setHighlightEventId: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -109,6 +112,9 @@ export const useAppStore = create<AppState>()(
       openTaskModal: (mode, initialData, taskId) =>
         set({ taskModal: { open: true, mode, initialData, taskId } }),
       closeTaskModal: () => set({ taskModal: { open: false, mode: "create" } }),
+
+      highlightEventId: null,
+      setHighlightEventId: (id) => set({ highlightEventId: id }),
     }),
     { name: "FlowDocs" }
   )

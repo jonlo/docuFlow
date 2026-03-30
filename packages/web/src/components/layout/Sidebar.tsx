@@ -1,9 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/stores/appStore";
 import { IntegrationBadge } from "@/components/auth/IntegrationBadge";
 import { useTasks } from "@/hooks/useTasks";
-import { useStartTimer, usePauseTimer } from "@/hooks/useTaskMutations";
+import { usePauseTimer, useStartTimer, useUpdateTask } from "@/hooks/useTaskMutations";
 import type { Task } from "@flowdocs/shared";
+
+// ── Icons ────────────────────────────────────────────────────────────────────
+
+function PlayIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="5,3 19,12 5,21" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 
 // ── Elapsed timer display ─────────────────────────────────────────────────────
 
@@ -26,47 +53,120 @@ function ElapsedTimer({ totalSeconds, running }: { totalSeconds: number; running
   return <span className="text-xs text-text-muted font-mono">{h}:{m}:{s}</span>;
 }
 
-// ── In-progress task row ──────────────────────────────────────────────────────
+// ── Status colours ────────────────────────────────────────────────────────────
 
-function TaskRow({ task }: { task: Task }) {
-  const startTimer = useStartTimer();
-  const pauseTimer = usePauseTimer();
-  const running    = task.activeSessionId !== null;
+const STATUS_DOT: Record<string, string> = {
+  in_progress: "#3B82F6", // blue-500
+  pending:     "#F59E0B", // amber-500
+  blocked:     "#F59E0B",
+  done:        "#22C55E", // green-500
+};
 
-  function handleToggle() {
-    if (running && task.activeSessionId) {
-      pauseTimer.mutate({ taskId: task.id, sessionId: task.activeSessionId });
-    } else {
-      startTimer.mutate(task.id);
-    }
+function formatSeconds(s: number): string {
+  const h = Math.floor(s / 3600).toString().padStart(2, "0");
+  const m = Math.floor((s % 3600) / 60).toString().padStart(2, "0");
+  const sec = (s % 60).toString().padStart(2, "0");
+  return `${h}:${m}:${sec}`;
+}
+
+// ── Task row ──────────────────────────────────────────────────────────────────
+function TaskRow({ task }: { task: Task }): JSX.Element {
+  const startTimer          = useStartTimer();
+  const pauseTimer          = usePauseTimer();
+  const updateTask          = useUpdateTask();
+  const setHighlightEventId = useAppStore((s) => s.setHighlightEventId);
+  const setActivePage       = useAppStore((s) => s.setActivePage);
+
+  const running = task.activeSessionId !== null;
+  const disabled = startTimer.isPending || pauseTimer.isPending || updateTask.isPending;
+
+  async function handleStart(e: React.MouseEvent): Promise<void> {
+    e.stopPropagation();
+    await startTimer.mutateAsync(task.id);
+    await updateTask.mutateAsync({ id: task.id, body: { status: "in_progress" } });
   }
 
+  async function handlePause(e: React.MouseEvent): Promise<void> {
+    e.stopPropagation();
+    if (!task.activeSessionId) return;
+    await pauseTimer.mutateAsync({ taskId: task.id, sessionId: task.activeSessionId });
+    await updateTask.mutateAsync({ id: task.id, body: { status: "pending" } });
+  }
+
+  async function handleComplete(e: React.MouseEvent): Promise<void> {
+    e.stopPropagation();
+    if (running && task.activeSessionId) {
+      await pauseTimer.mutateAsync({ taskId: task.id, sessionId: task.activeSessionId });
+    }
+    await updateTask.mutateAsync({ id: task.id, body: { status: "done" } });
+  }
+
+  function handleNavigate(): void {
+    if (!task.eventId) return;
+    setActivePage("calendar");
+    setHighlightEventId(task.eventId);
+  }
+
+  const dotColor = STATUS_DOT[task.status] ?? "#9CA3AF";
+
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-base group">
+    <div
+      role={task.eventId ? "button" : undefined}
+      tabIndex={task.eventId ? 0 : undefined}
+      onClick={handleNavigate}
+      onKeyDown={task.eventId ? (e) => { if (e.key === "Enter") handleNavigate(); } : undefined}
+      className={[
+        "px-2 py-1.5 rounded-lg hover:bg-surface-base group flex items-center gap-2",
+        task.eventId ? "cursor-pointer" : "cursor-default",
+      ].join(" ")}
+      style={{ borderLeft: `2px solid ${dotColor}` }}
+    >
       <div className="flex-1 min-w-0">
         <p className="text-xs text-text-base truncate">{task.title}</p>
-        <ElapsedTimer totalSeconds={task.totalSeconds} running={running} />
-      </div>
-      <button
-        type="button"
-        onClick={handleToggle}
-        disabled={startTimer.isPending || pauseTimer.isPending}
-        className="p-1 rounded text-text-muted hover:text-accent-primary transition-colors disabled:opacity-50 flex-shrink-0"
-        title={running ? "Pause" : "Start"}
-      >
-        {running ? (
-          // Pause icon
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="6" y="4" width="4" height="16" rx="1" />
-            <rect x="14" y="4" width="4" height="16" rx="1" />
-          </svg>
-        ) : (
-          // Play icon
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-            <polygon points="5,3 19,12 5,21" />
-          </svg>
+        {task.status === "in_progress" && (
+          <ElapsedTimer totalSeconds={task.totalSeconds} running={running} />
         )}
-      </button>
+        {task.status === "done" && task.totalSeconds > 0 && (
+          <span className="text-xs text-text-muted font-mono">{formatSeconds(task.totalSeconds)}</span>
+        )}
+      </div>
+
+      {/* Action icons */}
+      {task.status !== "done" && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {task.status === "in_progress" && running && (
+            <button
+              type="button"
+              title="Pause"
+              onClick={handlePause}
+              disabled={disabled}
+              className="p-1 rounded text-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-50"
+            >
+              <PauseIcon />
+            </button>
+          )}
+          {(task.status === "pending" || task.status === "blocked" || (task.status === "in_progress" && !running)) && (
+            <button
+              type="button"
+              title="Start"
+              onClick={handleStart}
+              disabled={disabled}
+              className="p-1 rounded text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50"
+            >
+              <PlayIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            title="Complete"
+            onClick={handleComplete}
+            disabled={disabled}
+            className="p-1 rounded text-green-500 hover:bg-green-50 transition-colors disabled:opacity-50"
+          >
+            <CheckIcon />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -81,10 +181,20 @@ export function Sidebar(): JSX.Element {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const [sectionsOpen, setSectionsOpen] = useState<{
+    in_progress: boolean;
+    waiting: boolean;
+    completed: boolean;
+  }>({ in_progress: true, waiting: true, completed: false });
 
   const { data: allTasks = [] } = useTasks();
   const inProgressTasks = allTasks.filter((t) => t.status === "in_progress");
-  const waitingTasks    = allTasks.filter((t) => t.status === "pending");
+  const waitingTasks    = allTasks.filter((t) => t.status === "pending" || t.status === "blocked");
+  const completedTasks  = allTasks.filter((t) => t.status === "done");
+
+  function toggleSection(key: "in_progress" | "waiting" | "completed"): void {
+    setSectionsOpen((s) => ({ ...s, [key]: !s[key] }));
+  }
 
   // Close picker on outside click or Escape
   useEffect(() => {
@@ -170,29 +280,46 @@ export function Sidebar(): JSX.Element {
         Calendar
       </button>
 
-      {/* Tasks section */}
-      {(inProgressTasks.length > 0 || waitingTasks.length > 0) && (
-        <div className="flex flex-col gap-0.5 mt-1">
-          {inProgressTasks.length > 0 && (
-            <>
-              <span className="px-2 text-[10px] font-semibold text-text-muted uppercase tracking-widest mt-1">In Progress</span>
-              {inProgressTasks.map((task) => (
-                <TaskRow key={task.id} task={task} />
-              ))}
-            </>
-          )}
-          {waitingTasks.length > 0 && (
-            <>
-              <span className="px-2 text-[10px] font-semibold text-text-muted uppercase tracking-widest mt-1">Waiting</span>
-              {waitingTasks.map((task) => (
-                <div key={task.id} className="flex items-center px-2 py-1.5 rounded-lg hover:bg-surface-base">
-                  <p className="text-xs text-text-muted truncate">{task.title}</p>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+      {/* Tasks section — always shown */}
+      <div className="flex flex-col gap-1 mt-1">
+        {(
+          [
+            { key: "in_progress" as const, label: "In Progress", tasks: inProgressTasks, bg: "bg-blue-500/10 hover:bg-blue-500/20", text: "text-blue-600", caret: "text-blue-400" },
+            { key: "waiting"     as const, label: "Waiting",     tasks: waitingTasks,    bg: "bg-amber-400/10 hover:bg-amber-400/20", text: "text-amber-600", caret: "text-amber-400" },
+            { key: "completed"   as const, label: "Completed",   tasks: completedTasks,  bg: "bg-green-500/10 hover:bg-green-500/20", text: "text-green-600", caret: "text-green-400" },
+          ] as const
+        ).map(({ key, label, tasks, bg, text, caret }) => (
+          <div key={key}>
+            <button
+              type="button"
+              onClick={() => toggleSection(key)}
+              className={["w-full flex items-center justify-between px-2 py-1 rounded-lg transition-colors", bg].join(" ")}
+            >
+              <span className={["text-[10px] font-semibold uppercase tracking-widest", text].join(" ")}>
+                {label}
+                {tasks.length > 0 && (
+                  <span className="ml-1 font-normal opacity-70">({tasks.length})</span>
+                )}
+              </span>
+              <svg
+                width="10" height="10" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className={[sectionsOpen[key] ? "rotate-180" : "", "transition-transform", caret].join(" ")}
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            {sectionsOpen[key] && tasks.length > 0 && (
+              <div className="flex flex-col gap-0.5 mt-0.5 pl-1">
+                {tasks.map((task) => (
+                  <TaskRow key={task.id} task={task} />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* Config section */}
       <div className="mt-4 px-2">

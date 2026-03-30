@@ -186,7 +186,7 @@ taskRoutes.post("/:id/sessions", async (c) => {
 
   const newSessionId = crypto.randomUUID();
   await c.env.DB.prepare(
-    "INSERT INTO task_sessions (id, task_id, started_at) VALUES (?, ?, datetime('now'))"
+    "INSERT INTO task_sessions (id, task_id, started_at) VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"
   ).bind(newSessionId, id).run();
 
   const updated = await c.env.DB.prepare("SELECT * FROM tasks WHERE id = ?")
@@ -212,7 +212,7 @@ taskRoutes.patch("/:id/sessions/:sessionId", async (c) => {
   if (s.ended_at) return c.json({ error: "Session already ended", code: "SESSION_ALREADY_ENDED" }, 409);
 
   await c.env.DB.prepare(
-    "UPDATE task_sessions SET ended_at = datetime('now') WHERE id = ?"
+    "UPDATE task_sessions SET ended_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?"
   ).bind(sessionId).run();
 
   const updated = await c.env.DB.prepare("SELECT * FROM tasks WHERE id = ?")
