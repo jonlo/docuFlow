@@ -4,6 +4,7 @@ import { CalendarView } from "@/components/calendar/CalendarView";
 import { TaskPanel } from "@/components/tasks/TaskPanel";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { LabelsPage } from "@/components/labels/LabelsPage";
+import TaskFormModal from "@/tasks/TaskFormModal";
 
 export default function App(): JSX.Element {
   const { selectedTaskId, activePage } = useAppStore();
@@ -21,6 +22,7 @@ export default function App(): JSX.Element {
           </aside>
         )}
       </div>
+      <TaskFormModal />
     </AuthGate>
   );
 }

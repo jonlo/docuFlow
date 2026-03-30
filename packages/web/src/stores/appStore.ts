@@ -49,6 +49,19 @@ interface AppState {
   detailModal: { open: boolean; event: CalendarEvent | null };
   openDetailModal: (event: CalendarEvent) => void;
   closeDetailModal: () => void;
+
+  taskModal: {
+    open: boolean;
+    mode: "create" | "edit";
+    taskId?: string;
+    initialData?: { eventId?: string; title?: string; status?: string };
+  };
+  openTaskModal: (
+    mode: "create" | "edit",
+    initialData?: { eventId?: string; title?: string; status?: string },
+    taskId?: string
+  ) => void;
+  closeTaskModal: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -91,6 +104,11 @@ export const useAppStore = create<AppState>()(
       detailModal: { open: false, event: null },
       openDetailModal: (event) => set({ detailModal: { open: true, event } }),
       closeDetailModal: () => set({ detailModal: { open: false, event: null } }),
+
+      taskModal: { open: false, mode: "create" },
+      openTaskModal: (mode, initialData, taskId) =>
+        set({ taskModal: { open: true, mode, initialData, taskId } }),
+      closeTaskModal: () => set({ taskModal: { open: false, mode: "create" } }),
     }),
     { name: "FlowDocs" }
   )

@@ -6,8 +6,9 @@ import EventFormModal from "./EventFormModal";
 import EventDetailModal from "./EventDetailModal";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "@/styles/calendar.css";
-import type { CalendarEvent } from "@flowdocs/shared";
+import type { CalendarEvent, Task } from "@flowdocs/shared";
 import { useAppStore } from "@/stores/appStore";
+import { useTasks } from "@/hooks/useTasks";
 import { useState } from "react";
 
 const localizer = dateFnsLocalizer({
@@ -56,6 +57,7 @@ interface RbcEvent {
   allDay: boolean;
   resource: CalendarEvent;
   _index: number;
+  tasks: Task[];
 }
 
 function eventStyleGetter(event: RbcEvent) {
@@ -76,6 +78,7 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
   const start  = format(event.start, "HH:mm");
   const end    = format(event.end,   "HH:mm");
   const labels = event.resource.labels ?? [];
+  const tasks  = event.tasks;
   return (
     <div className="flex flex-col gap-0.5 overflow-hidden">
       <div className="flex items-center gap-1 overflow-hidden">
@@ -94,6 +97,27 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
         )}
       </div>
       <span style={{ fontSize: 10, color: "#6B6B8A", lineHeight: 1.2 }}>{start} – {end}</span>
+      {tasks.length > 0 && (
+        <div className="flex flex-col gap-px mt-0.5">
+          {tasks.slice(0, 2).map((t) => (
+            <div key={t.id} className="flex items-center gap-1 overflow-hidden">
+              <span
+                className="w-1 h-1 rounded-full flex-shrink-0"
+                style={{
+                  backgroundColor:
+                    t.status === "in_progress" ? "#6366F1" :
+                    t.status === "done"        ? "#34D399" :
+                    "#9CA3AF",
+                }}
+              />
+              <span className="truncate" style={{ fontSize: 9, color: "#3D3D5C", lineHeight: 1.3 }}>{t.title}</span>
+            </div>
+          ))}
+          {tasks.length > 2 && (
+            <span style={{ fontSize: 9, color: "#6B6B8A" }}>+{tasks.length - 2} more</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -129,6 +153,7 @@ export function CalendarView(): JSX.Element {
   const [view, setView] = useState<View>("week");
   const [date, setDate] = useState(new Date());
   const { data: events, isLoading, isError, refetch } = useCalendarEvents();
+  const { data: allTasks = [] } = useTasks();
   const openEventModal   = useAppStore((s) => s.openEventModal);
   const openDetailModal  = useAppStore((s) => s.openDetailModal);
 
@@ -140,6 +165,7 @@ export function CalendarView(): JSX.Element {
     allDay:   e.allDay,
     resource: e,
     _index:   i,
+    tasks:    allTasks.filter((t) => t.eventId === e.id),
   }));
 
   function handleSelectSlot(slot: SlotInfo) {

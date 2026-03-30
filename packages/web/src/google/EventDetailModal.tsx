@@ -1,15 +1,19 @@
 import { useEffect } from "react";
 import { format } from "date-fns";
 import { useAppStore } from "@/stores/appStore";
+import { useTasks } from "@/hooks/useTasks";
 
 export default function EventDetailModal() {
-  const { detailModal, closeDetailModal, openEventModal } = useAppStore((s) => ({
-    detailModal:    s.detailModal,
+  const { detailModal, closeDetailModal, openEventModal, openTaskModal } = useAppStore((s) => ({
+    detailModal:      s.detailModal,
     closeDetailModal: s.closeDetailModal,
-    openEventModal: s.openEventModal,
+    openEventModal:   s.openEventModal,
+    openTaskModal:    s.openTaskModal,
   }));
 
   const { open, event } = detailModal;
+  const { data: allTasks = [] } = useTasks();
+  const eventTasks = allTasks.filter((t) => t.eventId === event?.id);
 
   // Escape key
   useEffect(() => {
@@ -120,6 +124,46 @@ export default function EventDetailModal() {
             <p className="text-text-base whitespace-pre-wrap">{event.description}</p>
           </div>
         )}
+
+        {/* Linked tasks */}
+        {eventTasks.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-widest">Tasks</span>
+            {eventTasks.map((t) => (
+              <div key={t.id} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-surface-base">
+                <span
+                  className={[
+                    "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                    t.status === "in_progress" ? "bg-accent-primary" :
+                    t.status === "done"        ? "bg-green-400" :
+                    "bg-text-muted",
+                  ].join(" ")}
+                />
+                <span className="text-xs text-text-base truncate flex-1">{t.title}</span>
+                <span className="text-[10px] text-text-muted flex-shrink-0">
+                  {t.status === "in_progress" ? "In Progress" : t.status === "done" ? "Done" : "Waiting"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex justify-end pt-1 border-t border-surface-border mt-1">
+          <button
+            type="button"
+            onClick={() => {
+              closeDetailModal();
+              openTaskModal("create", { eventId: event.id });
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-surface-border text-text-muted hover:text-accent-primary hover:border-accent-primary/50 transition-colors"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Create Task
+          </button>
+        </div>
       </div>
     </div>
   );

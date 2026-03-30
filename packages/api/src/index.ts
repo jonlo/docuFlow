@@ -5,6 +5,7 @@ import { googleRoutes } from "./google/routes";
 import { authRoutes } from "./routes/auth";
 import { documentRoutes } from "./routes/documents";
 import { labelRoutes } from "./routes/labels";
+import { taskRoutes } from "./routes/tasks";
 import type { Env } from "./types";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -28,6 +29,9 @@ app.route("/api/documents", documentRoutes);
 
 // Labels: /api/labels/*
 app.route("/api/labels", labelRoutes);
+
+// Tasks: /api/tasks/*
+app.route("/api/tasks", taskRoutes);
 
 app.get("/api/health", (c) => c.json({ status: "ok", ts: new Date().toISOString() }));
 

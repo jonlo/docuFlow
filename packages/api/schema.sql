@@ -89,6 +89,15 @@ CREATE INDEX IF NOT EXISTS idx_tasks_event  ON tasks(event_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_start  ON tasks(start);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 
+CREATE TABLE IF NOT EXISTS task_sessions (
+  id         TEXT PRIMARY KEY,
+  task_id    TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  started_at TEXT NOT NULL,
+  ended_at   TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_task_sessions_task ON task_sessions(task_id);
+
 CREATE TABLE IF NOT EXISTS documents (
   id              TEXT PRIMARY KEY,
   provider        TEXT NOT NULL CHECK(provider IN ('notion','confluence')),

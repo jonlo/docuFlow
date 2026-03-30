@@ -63,6 +63,13 @@ export interface Document {
 export type TaskStatus   = "pending" | "in_progress" | "done" | "blocked";
 export type TaskPriority = "low" | "medium" | "high";
 
+export interface TaskSession {
+  id: string;
+  taskId: string;
+  startedAt: string;
+  endedAt?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -77,6 +84,8 @@ export interface Task {
   labels: Label[];
   documents: Document[];
   assignees: User[];
+  totalSeconds: number;
+  activeSessionId: string | null;
   createdAt: string;
   updatedAt: string;
 }
