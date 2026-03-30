@@ -1,4 +1,4 @@
-import type { CalendarEvent, CreateEventBody, UpdateEventBody } from "@flowdocs/shared";
+import type { CalendarEvent, CreateEventBody, Label, UpdateEventBody } from "@flowdocs/shared";
 import type { Env } from "../types";
 import * as googleApi from "./api";
 import * as kv from "./kv";
@@ -15,7 +15,7 @@ function rollingWindow(): { timeMin: string; timeMax: string } {
   };
 }
 
-function toCalendarEvent(row: Record<string, unknown>): CalendarEvent {
+function toCalendarEvent(row: Record<string, unknown>, labels: Label[] = []): CalendarEvent {
   const attendeesRaw = row["attendees"] as string | null;
   return {
     id:           row["id"]              as string,
@@ -29,7 +29,44 @@ function toCalendarEvent(row: Record<string, unknown>): CalendarEvent {
     htmlLink:     (row["html_link"]      as string | null) ?? undefined,
     colorId:      (row["color_id"]       as string | null) ?? undefined,
     attendees:    attendeesRaw ? (JSON.parse(attendeesRaw) as CalendarEvent["attendees"]) : undefined,
+    labels,
   };
+}
+
+// Fetch labels for all events in a time window — avoids IN (...) with many variables
+async function fetchLabelsForWindow(
+  env: Env,
+  timeMin: string,
+  timeMax: string
+): Promise<Map<string, Label[]>> {
+  const map = new Map<string, Label[]>();
+  const rows = await env.DB.prepare(`
+    SELECT el.entity_id AS event_id, l.id, l.name, l.color
+    FROM entity_labels el
+    JOIN labels l ON l.id = el.label_id
+    JOIN events e ON e.id = el.entity_id
+    WHERE el.entity_type = 'event' AND e.start >= ? AND e.start <= ?
+    ORDER BY l.name ASC
+  `).bind(timeMin, timeMax).all<{ event_id: string; id: string; name: string; color: string }>();
+
+  for (const r of rows.results ?? []) {
+    const arr = map.get(r.event_id) ?? [];
+    arr.push({ id: r.id, name: r.name, color: r.color });
+    map.set(r.event_id, arr);
+  }
+  return map;
+}
+
+// Fetch labels for a single event ID (safe — 1 variable)
+async function fetchLabelsForEvent(env: Env, eventId: string): Promise<Label[]> {
+  const rows = await env.DB.prepare(`
+    SELECT l.id, l.name, l.color
+    FROM entity_labels el
+    JOIN labels l ON l.id = el.label_id
+    WHERE el.entity_type = 'event' AND el.entity_id = ?
+    ORDER BY l.name ASC
+  `).bind(eventId).all<Label>();
+  return rows.results ?? [];
 }
 
 export async function syncAndReturnEvents(
@@ -89,7 +126,10 @@ export async function syncAndReturnEvents(
     "SELECT * FROM events WHERE start >= ? AND start <= ? ORDER BY start ASC"
   ).bind(timeMin, timeMax).all<Record<string, unknown>>();
 
-  return (result.results ?? []).map(toCalendarEvent);
+  const rows = result.results ?? [];
+  const labelsMap = await fetchLabelsForWindow(env, timeMin, timeMax);
+
+  return rows.map((r) => toCalendarEvent(r, labelsMap.get(r["id"] as string) ?? []));
 }
 
 export async function createEvent(
@@ -121,7 +161,8 @@ export async function createEvent(
 
   const row = await env.DB.prepare("SELECT * FROM events WHERE google_event_id = ?")
     .bind(googleEvent.id).first<Record<string, unknown>>();
-  return toCalendarEvent(row!);
+  const savedId = row!["id"] as string;
+  return toCalendarEvent(row!, await fetchLabelsForEvent(env, savedId));
 }
 
 export async function updateEvent(
@@ -154,7 +195,7 @@ export async function updateEvent(
 
   const row = await env.DB.prepare("SELECT * FROM events WHERE id = ?")
     .bind(id).first<Record<string, unknown>>();
-  return toCalendarEvent(row!);
+  return toCalendarEvent(row!, await fetchLabelsForEvent(env, id));
 }
 
 export async function deleteEvent(
@@ -170,4 +211,38 @@ export async function deleteEvent(
   await googleApi.deleteCalendarEvent(accessToken, existing.google_event_id);
   await env.DB.prepare("DELETE FROM events WHERE id = ?").bind(id).run();
   await env.FLOWDOCS_KV.delete(`synced_at:${userId}`);
+}
+
+export async function setEventLabels(
+  eventId: string,
+  labelIds: string[],
+  env: Env
+): Promise<CalendarEvent> {
+  const existing = await env.DB.prepare("SELECT * FROM events WHERE id = ?")
+    .bind(eventId).first<Record<string, unknown>>();
+  if (!existing) throw Object.assign(new Error("Event not found"), { code: "NOT_FOUND" });
+
+  // Validate all label IDs exist
+  if (labelIds.length > 0) {
+    const placeholders = labelIds.map(() => "?").join(",");
+    const found = await env.DB.prepare(
+      `SELECT id FROM labels WHERE id IN (${placeholders})`
+    ).bind(...labelIds).all<{ id: string }>();
+    if ((found.results ?? []).length !== labelIds.length) {
+      throw Object.assign(new Error("One or more label IDs are invalid"), { code: "INVALID_LABEL_IDS" });
+    }
+  }
+
+  // Replace all associations atomically
+  await env.DB.prepare(
+    "DELETE FROM entity_labels WHERE entity_type = 'event' AND entity_id = ?"
+  ).bind(eventId).run();
+
+  for (const labelId of labelIds) {
+    await env.DB.prepare(
+      "INSERT INTO entity_labels (entity_type, entity_id, label_id) VALUES ('event', ?, ?)"
+    ).bind(eventId, labelId).run();
+  }
+
+  return toCalendarEvent(existing, await fetchLabelsForEvent(env, eventId));
 }

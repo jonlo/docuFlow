@@ -153,6 +153,31 @@ googleRoutes.delete("/events/:id", async (c) => {
   }
 });
 
+// PUT /api/events/:id/labels
+googleRoutes.put("/events/:id/labels", async (c) => {
+  const sessionId = getCookie(c, "session");
+  const session   = sessionId ? await kv.getSession(c.env.FLOWDOCS_KV, sessionId) : null;
+  if (!session?.googleAccessToken || !session.userId || !sessionId) {
+    return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+  }
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json<{ labelIds: string[] }>();
+    const labelIds = Array.isArray(body.labelIds) ? body.labelIds : [];
+    const event = await googleCalendar.setEventLabels(id, labelIds, c.env);
+    return c.json(event);
+  } catch (err) {
+    if (err instanceof Error && (err as { code?: string }).code === "NOT_FOUND") {
+      return c.json({ error: "Event not found", code: "NOT_FOUND" }, 404);
+    }
+    if (err instanceof Error && (err as { code?: string }).code === "INVALID_LABEL_IDS") {
+      return c.json({ error: "One or more label IDs are invalid", code: "INVALID_LABEL_IDS" }, 400);
+    }
+    console.error(err);
+    return c.json({ error: "Internal error", code: "INTERNAL_ERROR" }, 500);
+  }
+});
+
 // GET /api/contacts/search
 googleRoutes.get("/contacts/search", async (c) => {
   const sessionId = getCookie(c, "session");

@@ -78,7 +78,7 @@
 /* ── Grid lines ──────────────────────────────────────────────────────────── */
 .flowdocs-calendar .rbc-timeslot-group {
   border-bottom: 1px solid #E2E2EE;
-  min-height: 40px;
+  min-height: 72px;
 }
 
 .flowdocs-calendar .rbc-time-slot {
@@ -124,10 +124,12 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  padding: 4px 6px;
+  padding: 3px 5px;
   box-shadow: none;
   outline: none;
+  overflow: hidden;
 }
+
 
 .flowdocs-calendar .rbc-event:focus {
   outline: none;
@@ -150,6 +152,7 @@
 
 .flowdocs-calendar .rbc-month-row {
   border-top: 1px solid #E2E2EE;
+  min-height: 120px;
 }
 
 .flowdocs-calendar .rbc-day-bg + .rbc-day-bg {

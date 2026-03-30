@@ -3,16 +3,17 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { CalendarView } from "@/components/calendar/CalendarView";
 import { TaskPanel } from "@/components/tasks/TaskPanel";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { LabelsPage } from "@/components/labels/LabelsPage";
 
 export default function App(): JSX.Element {
-  const { selectedTaskId } = useAppStore();
+  const { selectedTaskId, activePage } = useAppStore();
 
   return (
     <AuthGate>
       <div className="app-shell">
         <Sidebar />
         <main className="main-content">
-          <CalendarView />
+          {activePage === "labels" ? <LabelsPage /> : <CalendarView />}
         </main>
         {selectedTaskId && (
           <aside className="task-panel">

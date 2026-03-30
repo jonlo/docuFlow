@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { Integration, Task } from "@flowdocs/shared";
+import type { CalendarEvent, Integration, Label, Task } from "@flowdocs/shared";
 
 export interface EventFormValues {
   title: string;
@@ -8,6 +8,7 @@ export interface EventFormValues {
   start: string;      // ISO 8601
   end: string;        // ISO 8601
   attendees: { email: string; name?: string }[];
+  labels: Label[];
 }
 
 interface EventModalState {
@@ -41,6 +42,13 @@ interface AppState {
     googleEventId?: string
   ) => void;
   closeEventModal: () => void;
+
+  activePage: "calendar" | "labels";
+  setActivePage: (page: "calendar" | "labels") => void;
+
+  detailModal: { open: boolean; event: CalendarEvent | null };
+  openDetailModal: (event: CalendarEvent) => void;
+  closeDetailModal: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -76,6 +84,13 @@ export const useAppStore = create<AppState>()(
         set({ eventModal: { open: true, mode, initialData, eventId, googleEventId } }),
       closeEventModal: () =>
         set({ eventModal: { open: false, mode: "create" } }),
+
+      activePage: "calendar",
+      setActivePage: (page) => set({ activePage: page }),
+
+      detailModal: { open: false, event: null },
+      openDetailModal: (event) => set({ detailModal: { open: true, event } }),
+      closeDetailModal: () => set({ detailModal: { open: false, event: null } }),
     }),
     { name: "FlowDocs" }
   )

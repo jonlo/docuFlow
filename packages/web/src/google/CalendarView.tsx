@@ -3,6 +3,7 @@ import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { useCalendarEvents } from "./hooks";
 import EventFormModal from "./EventFormModal";
+import EventDetailModal from "./EventDetailModal";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "@/styles/calendar.css";
 import type { CalendarEvent } from "@flowdocs/shared";
@@ -72,11 +73,26 @@ function eventStyleGetter(event: RbcEvent) {
 }
 
 function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
-  const start = format(event.start, "HH:mm");
-  const end   = format(event.end,   "HH:mm");
+  const start  = format(event.start, "HH:mm");
+  const end    = format(event.end,   "HH:mm");
+  const labels = event.resource.labels ?? [];
   return (
     <div className="flex flex-col gap-0.5 overflow-hidden">
-      <span className="font-medium text-xs leading-tight truncate">{event.title}</span>
+      <div className="flex items-center gap-1 overflow-hidden">
+        <span className="font-medium text-xs leading-tight truncate">{event.title}</span>
+        {labels.slice(0, 3).map((l) => (
+          <span
+            key={l.id}
+            className="inline-flex items-center rounded-full px-1 text-white font-medium flex-shrink-0"
+            style={{ backgroundColor: l.color, fontSize: 8, paddingTop: 1, paddingBottom: 1, lineHeight: 1.4 }}
+          >
+            {l.name}
+          </span>
+        ))}
+        {labels.length > 3 && (
+          <span className="flex-shrink-0" style={{ fontSize: 8, color: "#6B6B8A" }}>+{labels.length - 3}</span>
+        )}
+      </div>
       <span style={{ fontSize: 10, color: "#6B6B8A", lineHeight: 1.2 }}>{start} – {end}</span>
     </div>
   );
@@ -113,7 +129,8 @@ export function CalendarView(): JSX.Element {
   const [view, setView] = useState<View>("week");
   const [date, setDate] = useState(new Date());
   const { data: events, isLoading, isError, refetch } = useCalendarEvents();
-  const openEventModal = useAppStore((s) => s.openEventModal);
+  const openEventModal   = useAppStore((s) => s.openEventModal);
+  const openDetailModal  = useAppStore((s) => s.openDetailModal);
 
   const calendarEvents: RbcEvent[] = (events ?? []).map((e, i) => ({
     id:       e.id,
@@ -132,18 +149,7 @@ export function CalendarView(): JSX.Element {
   }
 
   function handleSelectEvent(event: RbcEvent) {
-    const { resource } = event;
-    openEventModal(
-      "edit",
-      {
-        title:     resource.title,
-        start:     resource.start,
-        end:       resource.end,
-        attendees: resource.attendees ?? [],
-      },
-      resource.id,
-      resource.googleEventId
-    );
+    openDetailModal(event.resource);
   }
 
   if (isLoading) {
@@ -191,6 +197,7 @@ export function CalendarView(): JSX.Element {
         />
       </div>
       <EventFormModal />
+      <EventDetailModal />
     </div>
   );
 }

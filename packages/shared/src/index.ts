@@ -11,12 +11,18 @@ export type {
   ContactResult,
 } from "./google/index";
 
+
 // ── Labels ────────────────────────────────────────────────────────────────────
 
 export interface Label {
   id: string;
   name: string;
   color: string;           // hex e.g. '#6366f1'
+}
+
+export interface CreateLabelBody {
+  name: string;
+  color: string;
 }
 
 export type EntityType = "event" | "task" | "document" | "user";

@@ -49,6 +49,7 @@ export interface CalendarEvent {
   htmlLink?: string;
   colorId?: string;
   attendees?: Attendee[];
+  labels?: { id: string; name: string; color: string }[];
 }
 
 export interface CalendarList {
