@@ -259,6 +259,8 @@ export function CalendarView(): JSX.Element {
   const openDetailModal     = useAppStore((s) => s.openDetailModal);
   const highlightEventId    = useAppStore((s) => s.highlightEventId);
   const setHighlightEventId = useAppStore((s) => s.setHighlightEventId);
+  const highlightTaskId     = useAppStore((s) => s.highlightTaskId);
+  const setHighlightTaskId  = useAppStore((s) => s.setHighlightTaskId);
   const setActivePage       = useAppStore((s) => s.setActivePage);
 
   useEffect(() => {
@@ -272,6 +274,15 @@ export function CalendarView(): JSX.Element {
   }, [highlightEventId, events, setHighlightEventId, setActivePage]);
 
   useEffect(() => {
+    if (!highlightTaskId) return;
+    const task = allTasks.find((t) => t.id === highlightTaskId);
+    setHighlightTaskId(null);
+    if (!task?.start) return;
+    setDate(new Date(task.start));
+    setFlashEventId(`task-${task.id}`);
+  }, [highlightTaskId, allTasks, setHighlightTaskId]);
+
+  useEffect(() => {
     if (!flashEventId) return;
     const timer = setTimeout(() => setFlashEventId(null), 1400);
     return () => clearTimeout(timer);
@@ -282,6 +293,7 @@ export function CalendarView(): JSX.Element {
     if (event.type === "task" && event.task) {
       const colors = taskStatusColor(event.task.status);
       return {
+        className: event.isFlashing ? "rbc-event-flash" : undefined,
         style: {
           backgroundColor: colors.bg,
           borderLeft: `3px solid ${colors.border}`,
@@ -334,7 +346,7 @@ export function CalendarView(): JSX.Element {
         task:       t,
         _index:     0,
         tasks:      [],
-        isFlashing: false,
+        isFlashing: flashEventId === `task-${t.id}`,
         view,
       })),
   ];
@@ -347,6 +359,7 @@ export function CalendarView(): JSX.Element {
 
   function handleSelectEvent(event: RbcEvent) {
     if (event.type === "task" && event.task) {
+      setFlashEventId(event.id);
       setSelectedTask(event.task);
     } else if (event.resource) {
       openDetailModal(event.resource);

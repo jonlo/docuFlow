@@ -300,7 +300,8 @@ export default function TaskFormModal() {
 
   return (
     <div
-      className="fixed inset-0 z-60 flex items-center justify-center bg-black/30"
+      className="fixed inset-0 flex items-center justify-center bg-black/30"
+      style={{ zIndex: 60 }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) closeTaskModal(); }}
     >
       <div className="bg-surface-raised w-full max-w-sm rounded-xl shadow-xl border border-surface-border p-5 flex flex-col gap-4">

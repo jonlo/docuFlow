@@ -87,6 +87,7 @@ function TaskRow({ task, onDetail }: { task: Task; onDetail: (t: Task) => void }
   const pauseTimer          = usePauseTimer();
   const updateTask          = useUpdateTask();
   const setHighlightEventId = useAppStore((s) => s.setHighlightEventId);
+  const setHighlightTaskId  = useAppStore((s) => s.setHighlightTaskId);
   const setActivePage       = useAppStore((s) => s.setActivePage);
 
   const running = task.activeSessionId !== null;
@@ -114,23 +115,23 @@ function TaskRow({ task, onDetail }: { task: Task; onDetail: (t: Task) => void }
   }
 
   function handleNavigate(): void {
-    if (!task.eventId) return;
     setActivePage("calendar");
-    setHighlightEventId(task.eventId);
+    if (task.eventId) {
+      setHighlightEventId(task.eventId);
+    } else if (task.start) {
+      setHighlightTaskId(task.id);
+    }
   }
 
   const dotColor = STATUS_DOT[task.status] ?? "#9CA3AF";
 
   return (
     <div
-      role={task.eventId ? "button" : undefined}
-      tabIndex={task.eventId ? 0 : undefined}
+      role="button"
+      tabIndex={0}
       onClick={handleNavigate}
-      onKeyDown={task.eventId ? (e) => { if (e.key === "Enter") handleNavigate(); } : undefined}
-      className={[
-        "px-2 py-1.5 rounded-lg hover:bg-surface-base group flex items-center gap-2",
-        task.eventId ? "cursor-pointer" : "cursor-default",
-      ].join(" ")}
+      onKeyDown={(e) => { if (e.key === "Enter") handleNavigate(); }}
+      className="px-2 py-1.5 rounded-lg hover:bg-surface-base group flex items-center gap-2 cursor-pointer"
       style={{ borderLeft: `2px solid ${dotColor}` }}
     >
       <div className="flex-1 min-w-0">

@@ -65,6 +65,9 @@ interface AppState {
 
   highlightEventId: string | null;
   setHighlightEventId: (id: string | null) => void;
+
+  highlightTaskId: string | null;
+  setHighlightTaskId: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -115,6 +118,9 @@ export const useAppStore = create<AppState>()(
 
       highlightEventId: null,
       setHighlightEventId: (id) => set({ highlightEventId: id }),
+
+      highlightTaskId: null,
+      setHighlightTaskId: (id) => set({ highlightTaskId: id }),
     }),
     { name: "FlowDocs" }
   )
