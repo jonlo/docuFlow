@@ -3,6 +3,7 @@ import { useAppStore } from "@/stores/appStore";
 import { IntegrationBadge } from "@/components/auth/IntegrationBadge";
 import { useTasks } from "@/hooks/useTasks";
 import { usePauseTimer, useStartTimer, useUpdateTask } from "@/hooks/useTaskMutations";
+import { TaskDetailDialog } from "@/tasks/TaskDetailDialog";
 import type { Task } from "@flowdocs/shared";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
@@ -28,6 +29,17 @@ function CheckIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function DetailIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="9" y1="9" x2="15" y2="9" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="12" y2="17" />
     </svg>
   );
 }
@@ -70,7 +82,7 @@ function formatSeconds(s: number): string {
 }
 
 // ── Task row ──────────────────────────────────────────────────────────────────
-function TaskRow({ task }: { task: Task }): JSX.Element {
+function TaskRow({ task, onDetail }: { task: Task; onDetail: (t: Task) => void }): JSX.Element {
   const startTimer          = useStartTimer();
   const pauseTimer          = usePauseTimer();
   const updateTask          = useUpdateTask();
@@ -148,8 +160,8 @@ function TaskRow({ task }: { task: Task }): JSX.Element {
       </div>
 
       {/* Action icons */}
-      {task.status !== "done" && (
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        {task.status !== "done" && (<>
           {task.status === "in_progress" && running && (
             <button
               type="button"
@@ -181,8 +193,16 @@ function TaskRow({ task }: { task: Task }): JSX.Element {
           >
             <CheckIcon />
           </button>
-        </div>
-      )}
+        </>)}
+        <button
+          type="button"
+          title="View details"
+          onClick={(e) => { e.stopPropagation(); onDetail(task); }}
+          className="p-1 rounded text-text-muted hover:text-text-base hover:bg-surface-border transition-colors"
+        >
+          <DetailIcon />
+        </button>
+      </div>
     </div>
   );
 }
@@ -202,6 +222,7 @@ export function Sidebar(): JSX.Element {
     waiting: boolean;
     completed: boolean;
   }>({ in_progress: true, waiting: true, completed: false });
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
 
   const { data: allTasks = [] } = useTasks();
   const inProgressTasks = allTasks.filter((t) => t.status === "in_progress");
@@ -283,7 +304,7 @@ export function Sidebar(): JSX.Element {
         )}
       </div>
 
-      {/* Calendar nav */}
+      {/* Nav items */}
       <button
         onClick={() => setActivePage("calendar")}
         className={[
@@ -295,9 +316,24 @@ export function Sidebar(): JSX.Element {
       >
         Calendar
       </button>
+      <button
+        onClick={() => setActivePage("tasks")}
+        className={[
+          "text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2",
+          activePage === "tasks"
+            ? "bg-accent-muted text-accent-primary border-accent-primary"
+            : "text-text-muted border-transparent hover:bg-surface-base hover:text-text-base",
+        ].join(" ")}
+      >
+        Tasks
+      </button>
 
       {/* Tasks section — always shown */}
-      <div className="flex flex-col gap-1 mt-1">
+      <div className="flex items-center gap-2 px-2 mt-3 mb-1">
+        <span className="text-[10px] font-semibold text-text-muted uppercase tracking-widest whitespace-nowrap">Tasks</span>
+        <hr className="flex-1 border-surface-border" />
+      </div>
+      <div className="flex flex-col gap-1">
         {(
           [
             { key: "in_progress" as const, label: "In Progress", tasks: inProgressTasks, bg: "bg-blue-500/10 hover:bg-blue-500/20", text: "text-blue-600", caret: "text-blue-400" },
@@ -329,7 +365,7 @@ export function Sidebar(): JSX.Element {
             {sectionsOpen[key] && tasks.length > 0 && (
               <div className="flex flex-col gap-0.5 mt-0.5 pl-1">
                 {tasks.map((task) => (
-                  <TaskRow key={task.id} task={task} />
+                  <TaskRow key={task.id} task={task} onDetail={setDetailTask} />
                 ))}
               </div>
             )}
@@ -359,6 +395,13 @@ export function Sidebar(): JSX.Element {
         <IntegrationBadge provider="notion" />
         <IntegrationBadge provider="confluence" />
       </div>
+
+      {detailTask && (
+        <TaskDetailDialog
+          task={detailTask}
+          onClose={() => setDetailTask(null)}
+        />
+      )}
     </aside>
   );
 }

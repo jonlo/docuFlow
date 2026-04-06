@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/services/api";
-import type { CalendarEvent, CreateLabelBody, Label } from "@flowdocs/shared";
+import type { CalendarEvent, CreateLabelBody, Label, Task } from "@flowdocs/shared";
 
 export function useCreateLabel() {
   const qc = useQueryClient();
@@ -59,5 +59,17 @@ export function useSetEventLabels() {
         body: JSON.stringify({ labelIds }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["calendarEvents"] }),
+  });
+}
+
+export function useSetTaskLabels() {
+  const qc = useQueryClient();
+  return useMutation<Task, Error, { taskId: string; labelIds: string[] }>({
+    mutationFn: ({ taskId, labelIds }) =>
+      apiFetch<Task>(`/api/tasks/${taskId}/labels`, {
+        method: "PUT",
+        body: JSON.stringify({ labelIds }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
   });
 }

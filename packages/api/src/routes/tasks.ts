@@ -36,14 +36,23 @@ interface DocumentRow {
   url: string;
 }
 
+interface LabelRow {
+  id: string;
+  name: string;
+  color: string;
+}
+
 async function enrichTask(env: Env, row: TaskRow): Promise<Task> {
-  const [sessions, docs] = await Promise.all([
+  const [sessions, docs, labelRows] = await Promise.all([
     env.DB.prepare(
       "SELECT id, task_id, started_at, ended_at FROM task_sessions WHERE task_id = ? ORDER BY started_at ASC"
     ).bind(row.id).all<SessionRow>(),
     env.DB.prepare(
       "SELECT d.id, d.provider, d.provider_doc_id, d.title, d.url FROM task_documents td JOIN documents d ON d.id = td.document_id WHERE td.task_id = ?"
     ).bind(row.id).all<DocumentRow>(),
+    env.DB.prepare(
+      "SELECT l.id, l.name, l.color FROM entity_labels el JOIN labels l ON l.id = el.label_id WHERE el.entity_type = 'task' AND el.entity_id = ? ORDER BY l.name ASC"
+    ).bind(row.id).all<LabelRow>(),
   ]);
 
   const now = Math.floor(Date.now() / 1000);
@@ -77,7 +86,7 @@ async function enrichTask(env: Env, row: TaskRow): Promise<Task> {
     eventId: row.event_id ?? undefined,
     start: row.start ?? undefined,
     end: row.end ?? undefined,
-    labels: [],
+    labels: (labelRows.results ?? []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
     documents,
     assignees: [],
     totalSeconds,
@@ -279,6 +288,46 @@ taskRoutes.post("/:id/documents", async (c) => {
   const row = await c.env.DB.prepare("SELECT * FROM tasks WHERE id = ?")
     .bind(taskId).first<TaskRow>();
   return c.json(await enrichTask(c.env, row!), 201);
+});
+
+// ── PUT /api/tasks/:id/labels — replace all labels ───────────────────────────
+
+taskRoutes.put("/:id/labels", async (c) => {
+  const cookieId = getCookie(c, "session");
+  const auth     = cookieId ? await kv.getSession(c.env.FLOWDOCS_KV, cookieId) : null;
+  if (!auth?.userId) return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+
+  const taskId = c.req.param("id");
+  const task   = await c.env.DB.prepare("SELECT id FROM tasks WHERE id = ?")
+    .bind(taskId).first<{ id: string }>();
+  if (!task) return c.json({ error: "Task not found", code: "NOT_FOUND" }, 404);
+
+  const body     = await c.req.json<{ labelIds?: unknown }>();
+  const labelIds = Array.isArray(body.labelIds) ? (body.labelIds as string[]) : [];
+
+  if (labelIds.length > 0) {
+    const placeholders = labelIds.map(() => "?").join(",");
+    const found = await c.env.DB.prepare(
+      `SELECT id FROM labels WHERE id IN (${placeholders})`
+    ).bind(...labelIds).all<{ id: string }>();
+    if ((found.results ?? []).length !== labelIds.length) {
+      return c.json({ error: "One or more label IDs are invalid", code: "INVALID_LABEL_IDS" }, 400);
+    }
+  }
+
+  await c.env.DB.prepare(
+    "DELETE FROM entity_labels WHERE entity_type = 'task' AND entity_id = ?"
+  ).bind(taskId).run();
+
+  for (const labelId of labelIds) {
+    await c.env.DB.prepare(
+      "INSERT INTO entity_labels (entity_type, entity_id, label_id) VALUES ('task', ?, ?)"
+    ).bind(taskId, labelId).run();
+  }
+
+  const row = await c.env.DB.prepare("SELECT * FROM tasks WHERE id = ?")
+    .bind(taskId).first<TaskRow>();
+  return c.json(await enrichTask(c.env, row!));
 });
 
 // ── DELETE /api/tasks/:id/documents/:documentId — detach document ─────────────

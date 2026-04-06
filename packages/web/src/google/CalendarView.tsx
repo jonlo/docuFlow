@@ -10,6 +10,7 @@ import type { CalendarEvent, Task } from "@flowdocs/shared";
 import { useAppStore } from "@/stores/appStore";
 import { useTasks } from "@/hooks/useTasks";
 import { useState, useEffect, useRef } from "react";
+import { TaskDetailDialog } from "@/tasks/TaskDetailDialog";
 
 const localizer = dateFnsLocalizer({
   format,
@@ -44,6 +45,19 @@ const COLOR_ID_MAP: Record<string, EventFamily> = {
   "11": "peach",
 };
 
+// ── Consistent task status colors (used everywhere: calendar, sidebar, table) ─
+
+export const TASK_STATUS_COLORS: Record<string, { bg: string; border: string; dot: string; text: string }> = {
+  in_progress: { bg: "#EFF6FF", border: "#3B82F6", dot: "#3B82F6", text: "#1D4ED8" },
+  done:        { bg: "#F0FDF4", border: "#22C55E", dot: "#22C55E", text: "#15803D" },
+  pending:     { bg: "#FFFBEB", border: "#F59E0B", dot: "#F59E0B", text: "#B45309" },
+  blocked:     { bg: "#FFFBEB", border: "#F59E0B", dot: "#F59E0B", text: "#B45309" },
+};
+
+function taskStatusColor(status: string) {
+  return TASK_STATUS_COLORS[status] ?? TASK_STATUS_COLORS["pending"]!;
+}
+
 function colorIdToFamily(colorId: string | undefined | null, index: number): EventFamily {
   const mapped = colorId ? COLOR_ID_MAP[colorId] : undefined;
   return mapped ?? FAMILIES[index % FAMILIES.length]!;
@@ -55,26 +69,33 @@ interface RbcEvent {
   start: Date;
   end: Date;
   allDay: boolean;
-  resource: CalendarEvent;
+  type: "event" | "task";
+  resource?: CalendarEvent;
+  task?: Task;
   _index: number;
-  tasks: Task[];
+  tasks: Task[];        // linked tasks (only for type === "event")
   isFlashing: boolean;
   view: View;
 }
 
-
-function taskColor(status: string): string {
-  if (status === "in_progress") return "#3B82F6";
-  if (status === "done")        return "#22C55E";
-  return "#F59E0B";
+// Small task icon to distinguish task blocks from event blocks
+function TaskIcon() {
+  return (
+    <svg
+      width="9" height="9" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="2.5"
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <polyline points="9 11 12 14 22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  );
 }
 
 function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
-  const start   = format(event.start, "HH:mm");
-  const end     = format(event.end,   "HH:mm");
-  const labels  = event.resource.labels ?? [];
-  const tasks   = event.tasks;
-  const isDayView = event.view === "day";
+  const start = format(event.start, "HH:mm");
+  const end   = format(event.end,   "HH:mm");
 
   const rootRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
@@ -89,8 +110,36 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
     return () => obs.disconnect();
   }, []);
 
-  // >= 72px: enough room to show tasks stacked below time
   const tall = height >= 72;
+
+  // ── Task block ───────────────────────────────────────────────────────────────
+  if (event.type === "task" && event.task) {
+    const colors = taskStatusColor(event.task.status);
+    return (
+      <div ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full" style={{ color: colors.text }}>
+        <div className="flex items-center gap-1 overflow-hidden" style={{ flexWrap: "nowrap" }}>
+          <TaskIcon />
+          <span
+            className="font-medium text-xs leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
+            style={{ maxWidth: "90%" }}
+          >
+            {event.title}
+          </span>
+        </div>
+        {tall && (
+          <span style={{ fontSize: 10, opacity: 0.7, lineHeight: 1.2 }}>{start} – {end}</span>
+        )}
+        {!tall && (
+          <span style={{ fontSize: 10, opacity: 0.7, lineHeight: 1.2 }}>{start} – {end}</span>
+        )}
+      </div>
+    );
+  }
+
+  // ── Event block ──────────────────────────────────────────────────────────────
+  const labels  = event.resource?.labels ?? [];
+  const tasks   = event.tasks;
+  const isDayView = event.view === "day";
 
   const labelChips = labels.slice(0, 3).map((l) => (
     <span
@@ -102,16 +151,6 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
     </span>
   ));
 
-  const taskRows = tasks.map((t) => (
-    <div key={t.id} className="flex items-center gap-1">
-      <span
-        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-        style={{ backgroundColor: taskColor(t.status) }}
-      />
-      <span style={{ fontSize: 9, color: "#3D3D5C", lineHeight: 1.3 }}>{t.title}</span>
-    </div>
-  ));
-
   const taskDots = tasks.length > 0 && (
     <div className="flex items-center gap-1 flex-wrap">
       {tasks.slice(0, 4).map((t) => (
@@ -119,7 +158,7 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
           key={t.id}
           title={t.title}
           className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: taskColor(t.status) }}
+          style={{ backgroundColor: taskStatusColor(t.status).dot }}
         />
       ))}
       {tasks.length > 4 && (
@@ -129,39 +168,32 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
   );
 
   if (!tall) {
-    // ── Short card: everything on ONE line, overflow clips from the right
-    //    so title (first) has highest priority.
     return (
       <div ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full">
         <div className="flex items-center gap-1 overflow-hidden" style={{ flexWrap: "nowrap" }}>
-          {/* Title — flex-shrink-0 so it is never squeezed; truncate if it alone overflows */}
           <span
             className="font-medium text-xs leading-tight flex-shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
             style={{ maxWidth: "55%" }}
           >
             {event.title}
           </span>
-          {/* Labels — flex-shrink-0, clipped by parent overflow if title is long */}
           {labelChips}
           {labels.length > 3 && (
             <span className="flex-shrink-0" style={{ fontSize: 8, color: "#6B6B8A" }}>+{labels.length - 3}</span>
           )}
-          {/* Tasks inline — dots for non-day, compact titles for day */}
           {tasks.length > 0 && !isDayView && taskDots}
           {tasks.length > 0 && isDayView && tasks.map((t) => (
             <span key={t.id} className="flex items-center gap-0.5 flex-shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: taskColor(t.status) }} />
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: taskStatusColor(t.status).dot }} />
               <span className="whitespace-nowrap" style={{ fontSize: 9, color: "#3D3D5C" }}>{t.title}</span>
             </span>
           ))}
         </div>
-        {/* Time always on its own line — always visible */}
         <span style={{ fontSize: 10, color: "#6B6B8A", lineHeight: 1.2 }}>{start} – {end}</span>
       </div>
     );
   }
 
-  // ── Tall card: stacked rows
   return (
     <div ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full">
       <span className="font-medium text-xs leading-tight truncate">{event.title}</span>
@@ -174,7 +206,14 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
         </div>
       )}
       {tasks.length > 0 && (
-        <div className="flex flex-col gap-px overflow-hidden">{taskRows}</div>
+        <div className="flex flex-col gap-px overflow-hidden">
+          {tasks.map((t) => (
+            <div key={t.id} className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: taskStatusColor(t.status).dot }} />
+              <span style={{ fontSize: 9, color: "#3D3D5C", lineHeight: 1.3 }}>{t.title}</span>
+            </div>
+          ))}
+        </div>
       )}
       <span style={{ fontSize: 10, color: "#6B6B8A", lineHeight: 1.2 }}>{start} – {end}</span>
     </div>
@@ -212,6 +251,8 @@ export function CalendarView(): JSX.Element {
   const [view, setView] = useState<View>("week");
   const [date, setDate] = useState(new Date());
   const [flashEventId, setFlashEventId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
   const { data: events, isLoading, isError, refetch } = useCalendarEvents();
   const { data: allTasks = [] } = useTasks();
   const openEventModal      = useAppStore((s) => s.openEventModal);
@@ -220,21 +261,16 @@ export function CalendarView(): JSX.Element {
   const setHighlightEventId = useAppStore((s) => s.setHighlightEventId);
   const setActivePage       = useAppStore((s) => s.setActivePage);
 
-  // When a task's "show in calendar" is triggered, navigate + flash the event
   useEffect(() => {
     if (!highlightEventId || !events) return;
     const ev = events.find((e) => e.id === highlightEventId);
-    // Clear immediately so this effect doesn't re-run and cancel the flash
     setHighlightEventId(null);
     if (!ev) return;
-
     setActivePage("calendar");
     setDate(new Date(ev.start));
-    // Flash synchronously — no setTimeout, so cleanup can't race against it
     setFlashEventId(ev.id);
   }, [highlightEventId, events, setHighlightEventId, setActivePage]);
 
-  // Clear flash after animation completes
   useEffect(() => {
     if (!flashEventId) return;
     const timer = setTimeout(() => setFlashEventId(null), 1400);
@@ -242,7 +278,21 @@ export function CalendarView(): JSX.Element {
   }, [flashEventId]);
 
   function eventPropGetter(event: RbcEvent) {
-    const family = colorIdToFamily(event.resource.colorId, event._index);
+    // Task blocks: status-based color
+    if (event.type === "task" && event.task) {
+      const colors = taskStatusColor(event.task.status);
+      return {
+        style: {
+          backgroundColor: colors.bg,
+          borderLeft: `3px solid ${colors.border}`,
+          borderRadius: "6px",
+          color: colors.text,
+          border: "none",
+        },
+      };
+    }
+    // Event blocks: Google Calendar color family
+    const family = colorIdToFamily(event.resource?.colorId, event._index);
     const { bg, border } = EVENT_COLORS[family];
     return {
       className: event.isFlashing ? "rbc-event-flash" : undefined,
@@ -256,18 +306,38 @@ export function CalendarView(): JSX.Element {
     };
   }
 
-  const calendarEvents: RbcEvent[] = (events ?? []).map((e, i) => ({
-    id:         e.id,
-    title:      e.title,
-    start:      new Date(e.start),
-    end:        new Date(e.end),
-    allDay:     e.allDay,
-    resource:   e,
-    _index:     i,
-    tasks:      allTasks.filter((t) => t.eventId === e.id),
-    isFlashing: flashEventId === e.id,
-    view,
-  }));
+  const calendarEvents: RbcEvent[] = [
+    // Google Calendar events
+    ...(events ?? []).map((e, i) => ({
+      id:         e.id,
+      title:      e.title,
+      start:      new Date(e.start),
+      end:        new Date(e.end),
+      allDay:     e.allDay,
+      type:       "event" as const,
+      resource:   e,
+      _index:     i,
+      tasks:      allTasks.filter((t) => t.eventId === e.id),
+      isFlashing: flashEventId === e.id,
+      view,
+    })),
+    // Standalone tasks (no event, have start + end)
+    ...allTasks
+      .filter((t) => !t.eventId && t.start && t.end)
+      .map((t) => ({
+        id:         `task-${t.id}`,
+        title:      t.title,
+        start:      new Date(t.start!),
+        end:        new Date(t.end!),
+        allDay:     false,
+        type:       "task" as const,
+        task:       t,
+        _index:     0,
+        tasks:      [],
+        isFlashing: false,
+        view,
+      })),
+  ];
 
   function handleSelectSlot(slot: SlotInfo) {
     const start = (slot.start as Date).toISOString();
@@ -276,7 +346,11 @@ export function CalendarView(): JSX.Element {
   }
 
   function handleSelectEvent(event: RbcEvent) {
-    openDetailModal(event.resource);
+    if (event.type === "task" && event.task) {
+      setSelectedTask(event.task);
+    } else if (event.resource) {
+      openDetailModal(event.resource);
+    }
   }
 
   if (isLoading) {
@@ -325,6 +399,12 @@ export function CalendarView(): JSX.Element {
       </div>
       <EventFormModal />
       <EventDetailModal />
+      {selectedTask && (
+        <TaskDetailDialog
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+        />
+      )}
     </div>
   );
 }

@@ -4,11 +4,12 @@ import { useAppStore } from "@/stores/appStore";
 import { useTasks } from "@/hooks/useTasks";
 
 export default function EventDetailModal() {
-  const { detailModal, closeDetailModal, openEventModal, openTaskModal } = useAppStore((s) => ({
+  const { detailModal, closeDetailModal, openEventModal, openTaskModal, taskModalOpen } = useAppStore((s) => ({
     detailModal:      s.detailModal,
     closeDetailModal: s.closeDetailModal,
     openEventModal:   s.openEventModal,
     openTaskModal:    s.openTaskModal,
+    taskModalOpen:    s.taskModal.open,
   }));
 
   const { open, event } = detailModal;
@@ -18,10 +19,10 @@ export default function EventDetailModal() {
   // Escape key
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") closeDetailModal(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !taskModalOpen) closeDetailModal(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [open, closeDetailModal]);
+  }, [open, closeDetailModal, taskModalOpen]);
 
   if (!open || !event) return null;
 
@@ -130,7 +131,12 @@ export default function EventDetailModal() {
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-widest">Tasks</span>
             {eventTasks.map((t) => (
-              <div key={t.id} className="flex flex-col gap-0.5 px-2 py-1.5 rounded-lg bg-surface-base">
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => openTaskModal("edit", { title: t.title, status: t.status, eventId: t.eventId }, t.id)}
+                className="flex flex-col gap-0.5 px-2 py-1.5 rounded-lg bg-surface-base hover:bg-accent-muted transition-colors text-left w-full"
+              >
                 <div className="flex items-center gap-2">
                   <span
                     className={[
@@ -153,6 +159,7 @@ export default function EventDetailModal() {
                         href={doc.url}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="text-[10px] text-accent-primary hover:underline truncate"
                       >
                         {doc.title}
@@ -160,7 +167,7 @@ export default function EventDetailModal() {
                     ))}
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -169,10 +176,7 @@ export default function EventDetailModal() {
         <div className="flex justify-end pt-1 border-t border-surface-border mt-1">
           <button
             type="button"
-            onClick={() => {
-              closeDetailModal();
-              openTaskModal("create", { eventId: event.id });
-            }}
+            onClick={() => openTaskModal("create", { eventId: event.id })}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-surface-border text-text-muted hover:text-accent-primary hover:border-accent-primary/50 transition-colors"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

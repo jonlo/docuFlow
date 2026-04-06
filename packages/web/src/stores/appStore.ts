@@ -43,8 +43,8 @@ interface AppState {
   ) => void;
   closeEventModal: () => void;
 
-  activePage: "calendar" | "labels";
-  setActivePage: (page: "calendar" | "labels") => void;
+  activePage: "calendar" | "labels" | "tasks";
+  setActivePage: (page: "calendar" | "labels" | "tasks") => void;
 
   detailModal: { open: boolean; event: CalendarEvent | null };
   openDetailModal: (event: CalendarEvent) => void;
