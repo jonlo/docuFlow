@@ -89,6 +89,7 @@ function TaskRow({ task, onDetail }: { task: Task; onDetail: (t: Task) => void }
   const setHighlightEventId = useAppStore((s) => s.setHighlightEventId);
   const setHighlightTaskId  = useAppStore((s) => s.setHighlightTaskId);
   const setActivePage       = useAppStore((s) => s.setActivePage);
+  const openDocumentPage    = useAppStore((s) => s.openDocumentPage);
 
   const running = task.activeSessionId !== null;
   const disabled = startTimer.isPending || pauseTimer.isPending || updateTask.isPending;
@@ -148,10 +149,8 @@ function TaskRow({ task, onDetail }: { task: Task; onDetail: (t: Task) => void }
               <a
                 key={doc.id}
                 href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-[10px] text-accent-primary hover:underline truncate"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url }); }}
+                className="text-[10px] text-accent-primary hover:underline truncate cursor-pointer"
               >
                 {doc.title}
               </a>
@@ -327,6 +326,17 @@ export function Sidebar(): JSX.Element {
         ].join(" ")}
       >
         Tasks
+      </button>
+      <button
+        onClick={() => setActivePage("reports")}
+        className={[
+          "text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2",
+          activePage === "reports"
+            ? "bg-accent-muted text-accent-primary border-accent-primary"
+            : "text-text-muted border-transparent hover:bg-surface-base hover:text-text-base",
+        ].join(" ")}
+      >
+        Reports
       </button>
 
       {/* Tasks section — always shown */}

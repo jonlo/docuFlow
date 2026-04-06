@@ -56,9 +56,10 @@ function defaultEnd(): string {
 
 
 export default function TaskFormModal() {
-  const { taskModal, closeTaskModal } = useAppStore((s) => ({
-    taskModal:      s.taskModal,
-    closeTaskModal: s.closeTaskModal,
+  const { taskModal, closeTaskModal, openDocumentPage } = useAppStore((s) => ({
+    taskModal:        s.taskModal,
+    closeTaskModal:   s.closeTaskModal,
+    openDocumentPage: s.openDocumentPage,
   }));
 
   const { open, mode, initialData, taskId } = taskModal;
@@ -291,10 +292,10 @@ export default function TaskFormModal() {
   }
 
   // Documents to display in the list
-  const displayDocs: Array<{ id: string; title: string; url: string }> =
+  const displayDocs: Array<{ id: string; providerDocId: string; title: string; url: string }> =
     mode === "edit"
-      ? currentDocs.map((d) => ({ id: d.id, title: d.title, url: d.url }))
-      : queuedDocs.map((d) => ({ id: d.id, title: d.title, url: d.url }));
+      ? currentDocs.map((d) => ({ id: d.id, providerDocId: d.providerDocId, title: d.title, url: d.url }))
+      : queuedDocs.map((d) => ({ id: d.id, providerDocId: d.id, title: d.title, url: d.url }));
 
   const searchResults = notionSearch.data ?? [];
 
@@ -483,9 +484,8 @@ export default function TaskFormModal() {
                   <li key={doc.id} className="flex items-center justify-between gap-2 text-xs bg-surface-base rounded-lg px-2 py-1.5 border border-surface-border">
                     <a
                       href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-accent-primary hover:underline truncate flex-1"
+                      onClick={(e) => { e.preventDefault(); openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url }); }}
+                      className="text-accent-primary hover:underline truncate flex-1 cursor-pointer"
                     >
                       {doc.title}
                     </a>

@@ -220,32 +220,6 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
   );
 }
 
-const VIEW_OPTIONS: { label: string; value: View }[] = [
-  { label: "Month", value: "month" },
-  { label: "Week",  value: "week"  },
-  { label: "Day",   value: "day"   },
-];
-
-function ViewSwitcher({ view, onChange }: { view: View; onChange: (v: View) => void }): JSX.Element {
-  return (
-    <div className="flex rounded-lg border border-surface-border overflow-hidden self-start">
-      {VIEW_OPTIONS.map(({ label, value }) => (
-        <button
-          key={value}
-          onClick={() => onChange(value)}
-          className={[
-            "px-3 py-1 text-xs font-medium transition-colors",
-            view === value
-              ? "bg-accent-primary text-white"
-              : "bg-surface-raised text-text-muted hover:bg-accent-muted hover:text-accent-primary",
-          ].join(" ")}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function CalendarView(): JSX.Element {
   const [view, setView] = useState<View>("week");
@@ -392,7 +366,6 @@ export function CalendarView(): JSX.Element {
 
   return (
     <div className="flowdocs-calendar flex flex-col h-full p-4 gap-3">
-      <ViewSwitcher view={view} onChange={setView} />
       <div className="flex-1 min-h-0">
         <Calendar
           localizer={localizer}

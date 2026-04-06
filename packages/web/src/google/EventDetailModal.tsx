@@ -4,12 +4,13 @@ import { useAppStore } from "@/stores/appStore";
 import { useTasks } from "@/hooks/useTasks";
 
 export default function EventDetailModal() {
-  const { detailModal, closeDetailModal, openEventModal, openTaskModal, taskModalOpen } = useAppStore((s) => ({
-    detailModal:      s.detailModal,
-    closeDetailModal: s.closeDetailModal,
-    openEventModal:   s.openEventModal,
-    openTaskModal:    s.openTaskModal,
-    taskModalOpen:    s.taskModal.open,
+  const { detailModal, closeDetailModal, openEventModal, openTaskModal, taskModalOpen, openDocumentPage } = useAppStore((s) => ({
+    detailModal:        s.detailModal,
+    closeDetailModal:   s.closeDetailModal,
+    openEventModal:     s.openEventModal,
+    openTaskModal:      s.openTaskModal,
+    taskModalOpen:      s.taskModal.open,
+    openDocumentPage:   s.openDocumentPage,
   }));
 
   const { open, event } = detailModal;
@@ -157,10 +158,8 @@ export default function EventDetailModal() {
                       <a
                         key={doc.id}
                         href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-[10px] text-accent-primary hover:underline truncate"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url }); }}
+                        className="text-[10px] text-accent-primary hover:underline truncate cursor-pointer"
                       >
                         {doc.title}
                       </a>

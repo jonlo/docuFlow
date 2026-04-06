@@ -24,7 +24,7 @@ interface Props {
 }
 
 export function TaskDetailDialog({ task, linkedEventTitle, onClose }: Props): JSX.Element {
-  const { openTaskModal } = useAppStore((s) => ({ openTaskModal: s.openTaskModal }));
+  const { openTaskModal, openDocumentPage } = useAppStore((s) => ({ openTaskModal: s.openTaskModal, openDocumentPage: s.openDocumentPage }));
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -113,9 +113,8 @@ export function TaskDetailDialog({ task, linkedEventTitle, onClose }: Props): JS
               <a
                 key={doc.id}
                 href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-accent-primary hover:underline truncate"
+                onClick={(e) => { e.preventDefault(); openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url }); }}
+                className="text-xs text-accent-primary hover:underline truncate cursor-pointer"
               >
                 {doc.title}
               </a>

@@ -43,8 +43,8 @@ interface AppState {
   ) => void;
   closeEventModal: () => void;
 
-  activePage: "calendar" | "labels" | "tasks";
-  setActivePage: (page: "calendar" | "labels" | "tasks") => void;
+  activePage: "calendar" | "labels" | "tasks" | "reports";
+  setActivePage: (page: "calendar" | "labels" | "tasks" | "reports") => void;
 
   detailModal: { open: boolean; event: CalendarEvent | null };
   openDetailModal: (event: CalendarEvent) => void;
@@ -68,6 +68,10 @@ interface AppState {
 
   highlightTaskId: string | null;
   setHighlightTaskId: (id: string | null) => void;
+
+  documentPage: { id: string; title: string; url: string } | null;
+  openDocumentPage: (doc: { id: string; title: string; url: string }) => void;
+  closeDocumentPage: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -121,6 +125,10 @@ export const useAppStore = create<AppState>()(
 
       highlightTaskId: null,
       setHighlightTaskId: (id) => set({ highlightTaskId: id }),
+
+      documentPage: null,
+      openDocumentPage: (doc) => set({ documentPage: doc }),
+      closeDocumentPage: () => set({ documentPage: null }),
     }),
     { name: "FlowDocs" }
   )
