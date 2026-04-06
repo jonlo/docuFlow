@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { Env } from "../types";
-import type { Task, CreateTaskBody, UpdateTaskBody } from "@flowdocs/shared";
+import type { Task, CreateTaskBody, UpdateTaskBody, Document } from "@flowdocs/shared";
 import * as kv from "../google/kv";
 
 export const taskRoutes = new Hono<{ Bindings: Env }>();
@@ -28,10 +28,23 @@ interface SessionRow {
   ended_at: string | null;
 }
 
+interface DocumentRow {
+  id: string;
+  provider: string;
+  provider_doc_id: string;
+  title: string;
+  url: string;
+}
+
 async function enrichTask(env: Env, row: TaskRow): Promise<Task> {
-  const sessions = await env.DB.prepare(
-    "SELECT id, task_id, started_at, ended_at FROM task_sessions WHERE task_id = ? ORDER BY started_at ASC"
-  ).bind(row.id).all<SessionRow>();
+  const [sessions, docs] = await Promise.all([
+    env.DB.prepare(
+      "SELECT id, task_id, started_at, ended_at FROM task_sessions WHERE task_id = ? ORDER BY started_at ASC"
+    ).bind(row.id).all<SessionRow>(),
+    env.DB.prepare(
+      "SELECT d.id, d.provider, d.provider_doc_id, d.title, d.url FROM task_documents td JOIN documents d ON d.id = td.document_id WHERE td.task_id = ?"
+    ).bind(row.id).all<DocumentRow>(),
+  ]);
 
   const now = Math.floor(Date.now() / 1000);
   let totalSeconds = 0;
@@ -47,6 +60,14 @@ async function enrichTask(env: Env, row: TaskRow): Promise<Task> {
     }
   }
 
+  const documents: Document[] = (docs.results ?? []).map((d) => ({
+    id: d.id,
+    provider: d.provider as Document["provider"],
+    providerDocId: d.provider_doc_id,
+    title: d.title,
+    url: d.url,
+  }));
+
   return {
     id: row.id,
     title: row.title,
@@ -57,7 +78,7 @@ async function enrichTask(env: Env, row: TaskRow): Promise<Task> {
     start: row.start ?? undefined,
     end: row.end ?? undefined,
     labels: [],
-    documents: [],
+    documents,
     assignees: [],
     totalSeconds,
     activeSessionId,
@@ -218,4 +239,65 @@ taskRoutes.patch("/:id/sessions/:sessionId", async (c) => {
   const updated = await c.env.DB.prepare("SELECT * FROM tasks WHERE id = ?")
     .bind(taskId).first<TaskRow>();
   return c.json(await enrichTask(c.env, updated!));
+});
+
+// ── POST /api/tasks/:id/documents — attach document ───────────────────────────
+
+taskRoutes.post("/:id/documents", async (c) => {
+  const cookieId = getCookie(c, "session");
+  const auth     = cookieId ? await kv.getSession(c.env.FLOWDOCS_KV, cookieId) : null;
+  if (!auth?.userId) return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+
+  const taskId = c.req.param("id");
+  const task   = await c.env.DB.prepare("SELECT id FROM tasks WHERE id = ?")
+    .bind(taskId).first<{ id: string }>();
+  if (!task) return c.json({ error: "Task not found", code: "NOT_FOUND" }, 404);
+
+  const body = await c.req.json<{ providerDocId?: string; title?: string; url?: string }>();
+  if (!body.providerDocId?.trim() || !body.title?.trim() || !body.url?.trim()) {
+    return c.json({ error: "providerDocId, title, and url are required", code: "BAD_REQUEST" }, 400);
+  }
+
+  const docId = crypto.randomUUID();
+  await c.env.DB.prepare(
+    "INSERT OR IGNORE INTO documents (id, provider, provider_doc_id, title, url) VALUES (?, 'notion', ?, ?, ?)"
+  ).bind(docId, body.providerDocId.trim(), body.title.trim(), body.url.trim()).run();
+
+  const doc = await c.env.DB.prepare(
+    "SELECT id FROM documents WHERE provider = 'notion' AND provider_doc_id = ?"
+  ).bind(body.providerDocId.trim()).first<{ id: string }>();
+
+  const existing = await c.env.DB.prepare(
+    "SELECT 1 FROM task_documents WHERE task_id = ? AND document_id = ?"
+  ).bind(taskId, doc!.id).first();
+  if (existing) return c.json({ error: "Document already attached", code: "ALREADY_ATTACHED" }, 409);
+
+  await c.env.DB.prepare(
+    "INSERT INTO task_documents (task_id, document_id) VALUES (?, ?)"
+  ).bind(taskId, doc!.id).run();
+
+  const row = await c.env.DB.prepare("SELECT * FROM tasks WHERE id = ?")
+    .bind(taskId).first<TaskRow>();
+  return c.json(await enrichTask(c.env, row!), 201);
+});
+
+// ── DELETE /api/tasks/:id/documents/:documentId — detach document ─────────────
+
+taskRoutes.delete("/:id/documents/:documentId", async (c) => {
+  const cookieId = getCookie(c, "session");
+  const auth     = cookieId ? await kv.getSession(c.env.FLOWDOCS_KV, cookieId) : null;
+  if (!auth?.userId) return c.json({ error: "Not authenticated", code: "UNAUTHENTICATED" }, 401);
+
+  const taskId     = c.req.param("id");
+  const documentId = c.req.param("documentId");
+
+  const result = await c.env.DB.prepare(
+    "DELETE FROM task_documents WHERE task_id = ? AND document_id = ?"
+  ).bind(taskId, documentId).run();
+
+  if (!result.meta.changes) {
+    return c.json({ error: "Link not found", code: "NOT_FOUND" }, 404);
+  }
+
+  return new Response(null, { status: 204 });
 });

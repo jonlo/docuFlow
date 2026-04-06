@@ -18,6 +18,8 @@ ENVIRONMENT = "development"
 # Secrets — set via `wrangler secret put`:
 # GOOGLE_CLIENT_ID
 # GOOGLE_CLIENT_SECRET
+# NOTION_CLIENT_ID
+# NOTION_CLIENT_SECRET
 # SESSION_SECRET
 
 [dev]

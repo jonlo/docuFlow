@@ -129,6 +129,22 @@ function TaskRow({ task }: { task: Task }): JSX.Element {
         {task.status === "done" && task.totalSeconds > 0 && (
           <span className="text-xs text-text-muted font-mono">{formatSeconds(task.totalSeconds)}</span>
         )}
+        {task.documents.length > 0 && (
+          <div className="flex flex-col gap-0.5 mt-0.5">
+            {task.documents.map((doc) => (
+              <a
+                key={doc.id}
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] text-accent-primary hover:underline truncate"
+              >
+                {doc.title}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Action icons */}

@@ -5,6 +5,7 @@ import { googleRoutes } from "./google/routes";
 import { authRoutes } from "./routes/auth";
 import { documentRoutes } from "./routes/documents";
 import { labelRoutes } from "./routes/labels";
+import { notionRoutes } from "./routes/notion";
 import { taskRoutes } from "./routes/tasks";
 import type { Env } from "./types";
 
@@ -29,6 +30,9 @@ app.route("/api/documents", documentRoutes);
 
 // Labels: /api/labels/*
 app.route("/api/labels", labelRoutes);
+
+// Notion: /api/notion/*
+app.route("/api/notion", notionRoutes);
 
 // Tasks: /api/tasks/*
 app.route("/api/tasks", taskRoutes);

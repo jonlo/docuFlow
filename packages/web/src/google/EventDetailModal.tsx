@@ -130,19 +130,36 @@ export default function EventDetailModal() {
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-widest">Tasks</span>
             {eventTasks.map((t) => (
-              <div key={t.id} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-surface-base">
-                <span
-                  className={[
-                    "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                    t.status === "in_progress" ? "bg-accent-primary" :
-                    t.status === "done"        ? "bg-green-400" :
-                    "bg-text-muted",
-                  ].join(" ")}
-                />
-                <span className="text-xs text-text-base truncate flex-1">{t.title}</span>
-                <span className="text-[10px] text-text-muted flex-shrink-0">
-                  {t.status === "in_progress" ? "In Progress" : t.status === "done" ? "Done" : "Waiting"}
-                </span>
+              <div key={t.id} className="flex flex-col gap-0.5 px-2 py-1.5 rounded-lg bg-surface-base">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={[
+                      "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                      t.status === "in_progress" ? "bg-accent-primary" :
+                      t.status === "done"        ? "bg-green-400" :
+                      "bg-text-muted",
+                    ].join(" ")}
+                  />
+                  <span className="text-xs text-text-base truncate flex-1">{t.title}</span>
+                  <span className="text-[10px] text-text-muted flex-shrink-0">
+                    {t.status === "in_progress" ? "In Progress" : t.status === "done" ? "Done" : "Waiting"}
+                  </span>
+                </div>
+                {t.documents.length > 0 && (
+                  <div className="flex flex-col gap-0.5 pl-4">
+                    {t.documents.map((doc) => (
+                      <a
+                        key={doc.id}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-accent-primary hover:underline truncate"
+                      >
+                        {doc.title}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

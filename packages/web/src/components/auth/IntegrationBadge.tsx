@@ -27,19 +27,23 @@ export function IntegrationBadge({ provider }: Props): JSX.Element {
   }
 
   async function handleConnect() {
-    if (provider !== "google") return; // only Google OAuth implemented
-    const { url } = await apiFetch<{ url: string }>("/api/auth/google/url");
-    popupRef.current = window.open(url, "google-oauth", "width=500,height=650");
+    if (provider === "confluence") return;
+
+    const urlPath = provider === "google" ? "/api/auth/google/url" : "/api/auth/notion/url";
+    const { url } = await apiFetch<{ url: string }>(urlPath);
+    popupRef.current = window.open(url, `${provider}-oauth`, "width=500,height=650");
 
     pollRef.current = setInterval(async () => {
       if (popupRef.current?.closed) { stopPolling(); return; }
       try {
-        const status = await apiFetch<{ google: { connected: boolean } }>("/api/auth/status");
-        if (status.google?.connected) {
+        const status = await apiFetch<Record<string, { connected: boolean }>>("/api/auth/status");
+        if (status[provider]?.connected) {
           stopPolling();
           popupRef.current?.close();
           queryClient.invalidateQueries({ queryKey: ["authStatus"] });
-          queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+          if (provider === "google") {
+            queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+          }
         }
       } catch { /* ignore */ }
     }, 2000);
@@ -48,7 +52,9 @@ export function IntegrationBadge({ provider }: Props): JSX.Element {
   async function handleDisconnect() {
     await apiFetch(`/api/auth/${provider}`, { method: "DELETE" });
     queryClient.invalidateQueries({ queryKey: ["authStatus"] });
-    queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+    if (provider === "google") {
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+    }
   }
 
   return (
@@ -84,9 +90,9 @@ export function IntegrationBadge({ provider }: Props): JSX.Element {
       ) : (
         <button
           onClick={handleConnect}
-          disabled={provider !== "google"}
+          disabled={provider === "confluence"}
           className="text-[10px] text-accent-primary hover:text-accent-primary/80 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ml-1 disabled:text-text-muted disabled:cursor-default"
-          title={`Connect ${label}`}
+          title={provider === "confluence" ? "Coming soon" : `Connect ${label}`}
         >
           Connect
         </button>

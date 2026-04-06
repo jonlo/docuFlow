@@ -1,6 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/stores/appStore";
-import { useCreateTask, useDeleteTask, useUpdateTask } from "@/hooks/useTaskMutations";
+import {
+  useAttachDocument,
+  useCreateTask,
+  useDeleteTask,
+  useDetachDocument,
+  useUpdateTask,
+} from "@/hooks/useTaskMutations";
+import { useNotionSearch, type NotionSearchResult } from "@/hooks/useNotionSearch";
+import { useTasks } from "@/hooks/useTasks";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CalendarEvent, Task } from "@flowdocs/shared";
 
@@ -28,22 +36,47 @@ export default function TaskFormModal() {
 
   const { open, mode, initialData, taskId } = taskModal;
 
-  const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
-  const deleteTask = useDeleteTask();
-  const qc         = useQueryClient();
+  const createTask     = useCreateTask();
+  const updateTask     = useUpdateTask();
+  const deleteTask     = useDeleteTask();
+  const attachDocument = useAttachDocument();
+  const detachDocument = useDetachDocument();
+  const qc             = useQueryClient();
 
-  const [title, setTitle]           = useState("");
-  const [status, setStatus]         = useState<UIStatus>("waiting");
-  const [titleError, setTitleError] = useState("");
-  const [submitError, setSubmitError] = useState("");
+  const [title, setTitle]               = useState("");
+  const [status, setStatus]             = useState<UIStatus>("waiting");
+  const [titleError, setTitleError]     = useState("");
+  const [submitError, setSubmitError]   = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Document search
+  const [searchInput, setSearchInput]       = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showDropdown, setShowDropdown]     = useState(false);
+  // Create-mode queued docs (not yet persisted)
+  const [queuedDocs, setQueuedDocs]         = useState<NotionSearchResult[]>([]);
+
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search input 300ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const notionSearch    = useNotionSearch(debouncedSearch);
+  const isNotConfigured = (notionSearch.error as (Error & { code?: string }) | null)?.code === "NOTION_NOT_CONFIGURED";
 
   // Resolve linked event title from cache
   const cachedEvents = qc.getQueryData<CalendarEvent[]>(["calendarEvents"]) ?? [];
   const linkedEvent  = initialData?.eventId
     ? cachedEvents.find((e) => e.id === initialData.eventId)
     : undefined;
+
+  // Reactively get current task documents for edit mode
+  const { data: allTasks = [] } = useTasks();
+  const currentTask = mode === "edit" && taskId ? allTasks.find((t) => t.id === taskId) : undefined;
+  const currentDocs = currentTask?.documents ?? [];
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +85,10 @@ export default function TaskFormModal() {
     setTitleError("");
     setSubmitError("");
     setConfirmDelete(false);
+    setSearchInput("");
+    setDebouncedSearch("");
+    setShowDropdown(false);
+    setQueuedDocs([]);
   }, [open, initialData]);
 
   useEffect(() => {
@@ -60,6 +97,17 @@ export default function TaskFormModal() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [open, closeTaskModal]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   if (!open) return null;
 
@@ -71,11 +119,15 @@ export default function TaskFormModal() {
 
     try {
       if (mode === "create") {
-        await createTask.mutateAsync({
+        const newTask = await createTask.mutateAsync({
           title: title.trim(),
           status: toDbStatus(status),
           eventId: initialData?.eventId,
         });
+        // Attach queued docs after creation
+        for (const doc of queuedDocs) {
+          await attachDocument.mutateAsync({ taskId: newTask.id, doc });
+        }
       } else if (taskId) {
         await updateTask.mutateAsync({
           id: taskId,
@@ -98,7 +150,46 @@ export default function TaskFormModal() {
     }
   }
 
+  async function handleSelectResult(result: NotionSearchResult) {
+    setShowDropdown(false);
+    setSearchInput("");
+    setDebouncedSearch("");
+
+    if (mode === "edit" && taskId) {
+      try {
+        await attachDocument.mutateAsync({ taskId, doc: result });
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Failed to attach document");
+      }
+    } else {
+      // Create mode: queue unless already queued
+      if (!queuedDocs.some((d) => d.id === result.id)) {
+        setQueuedDocs((prev) => [...prev, result]);
+      }
+    }
+  }
+
+  async function handleDetach(documentId: string) {
+    if (mode === "edit" && taskId) {
+      try {
+        await detachDocument.mutateAsync({ taskId, documentId });
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Failed to detach document");
+      }
+    } else {
+      setQueuedDocs((prev) => prev.filter((d) => d.id !== documentId));
+    }
+  }
+
   const isPending = createTask.isPending || updateTask.isPending || deleteTask.isPending;
+
+  // Documents to display in the list
+  const displayDocs: Array<{ id: string; title: string; url: string }> =
+    mode === "edit"
+      ? currentDocs.map((d) => ({ id: d.id, title: d.title, url: d.url }))
+      : queuedDocs.map((d) => ({ id: d.id, title: d.title, url: d.url }));
+
+  const searchResults = notionSearch.data ?? [];
 
   return (
     <div
@@ -169,6 +260,78 @@ export default function TaskFormModal() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Documents */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Documents</label>
+
+            {/* Attached docs list */}
+            {displayDocs.length > 0 && (
+              <ul className="flex flex-col gap-1 mb-1">
+                {displayDocs.map((doc) => (
+                  <li key={doc.id} className="flex items-center justify-between gap-2 text-xs bg-surface-base rounded-lg px-2 py-1.5 border border-surface-border">
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent-primary hover:underline truncate flex-1"
+                    >
+                      {doc.title}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDetach(doc.id)}
+                      className="text-text-muted hover:text-red-500 transition-colors flex-shrink-0"
+                      aria-label="Detach document"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Search input or "Connect Notion first" */}
+            {isNotConfigured ? (
+              <p className="text-xs text-text-muted italic">Connect Notion first</p>
+            ) : (
+              <div ref={searchRef} className="relative">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    setShowDropdown(true);
+                  }}
+                  onFocus={() => { if (debouncedSearch.length >= 2) setShowDropdown(true); }}
+                  placeholder="Search Notion pages…"
+                  className="w-full border border-surface-border rounded-lg px-3 py-2 text-xs text-text-base bg-surface-base focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+                />
+
+                {/* Dropdown */}
+                {showDropdown && debouncedSearch.length >= 2 && (
+                  <div className="absolute z-10 mt-1 w-full bg-surface-raised border border-surface-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {notionSearch.isLoading && (
+                      <div className="px-3 py-2 text-xs text-text-muted">Searching…</div>
+                    )}
+                    {!notionSearch.isLoading && searchResults.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-text-muted">No results</div>
+                    )}
+                    {searchResults.map((result) => (
+                      <button
+                        key={result.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleSelectResult(result); }}
+                        className="w-full text-left px-3 py-2 text-xs text-text-base hover:bg-surface-base transition-colors truncate"
+                      >
+                        {result.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {submitError && <span className="text-xs text-red-500">{submitError}</span>}
