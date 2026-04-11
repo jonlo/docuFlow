@@ -15,6 +15,7 @@ export interface AuthStatus {
   google: Integration;
   notion: Integration;
   confluence: Integration;
+  confluenceConnected: boolean;
 }
 
 // ── Event mutations ───────────────────────────────────────────────────────────

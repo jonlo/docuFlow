@@ -72,11 +72,15 @@ export async function getAuthStatus(sessionId: string, env: Env): Promise<AuthSt
     google:     { provider: "google",     connected: false },
     notion:     { provider: "notion",     connected: false },
     confluence: { provider: "confluence", connected: false },
+    confluenceConnected: false,
   };
   const session = await kv.getSession(env.FLOWDOCS_KV, sessionId);
   if (!session) return base;
   if (session.googleAccessToken) base.google = { provider: "google", connected: true, accountEmail: session.googleEmail };
   if (session.notionToken)       base.notion = { provider: "notion", connected: true };
-  if (session.confluenceToken)   base.confluence = { provider: "confluence", connected: true };
+  if (session.confluenceToken) {
+    base.confluence = { provider: "confluence", connected: true, accountEmail: session.confluenceEmail };
+    base.confluenceConnected = true;
+  }
   return base;
 }

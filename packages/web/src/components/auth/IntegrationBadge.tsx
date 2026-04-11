@@ -27,9 +27,11 @@ export function IntegrationBadge({ provider }: Props): JSX.Element {
   }
 
   async function handleConnect() {
-    if (provider === "confluence") return;
-
-    const urlPath = provider === "google" ? "/api/auth/google/url" : "/api/auth/notion/url";
+    const urlPath = provider === "google"
+      ? "/api/auth/google/url"
+      : provider === "notion"
+        ? "/api/auth/notion/url"
+        : "/api/auth/confluence/url";
     const { url } = await apiFetch<{ url: string }>(urlPath);
     popupRef.current = window.open(url, `${provider}-oauth`, "width=500,height=650");
 
@@ -50,7 +52,8 @@ export function IntegrationBadge({ provider }: Props): JSX.Element {
   }
 
   async function handleDisconnect() {
-    await apiFetch(`/api/auth/${provider}`, { method: "DELETE" });
+    const path = provider === "confluence" ? "/api/auth/confluence" : `/api/auth/${provider}`;
+    await apiFetch(path, { method: "DELETE" });
     queryClient.invalidateQueries({ queryKey: ["authStatus"] });
     if (provider === "google") {
       queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
@@ -90,9 +93,8 @@ export function IntegrationBadge({ provider }: Props): JSX.Element {
       ) : (
         <button
           onClick={handleConnect}
-          disabled={provider === "confluence"}
-          className="text-[10px] text-accent-primary hover:text-accent-primary/80 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ml-1 disabled:text-text-muted disabled:cursor-default"
-          title={provider === "confluence" ? "Coming soon" : `Connect ${label}`}
+          className="text-[10px] text-accent-primary hover:text-accent-primary/80 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 ml-1"
+          title={`Connect ${label}`}
         >
           Connect
         </button>

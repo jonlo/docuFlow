@@ -149,7 +149,15 @@ function TaskRow({ task, onDetail }: { task: Task; onDetail: (t: Task) => void }
               <a
                 key={doc.id}
                 href={doc.url}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url }); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (doc.provider === "notion") {
+                    e.preventDefault();
+                    openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url });
+                  }
+                }}
+                target={doc.provider === "confluence" ? "_blank" : undefined}
+                rel={doc.provider === "confluence" ? "noreferrer" : undefined}
                 className="text-[10px] text-accent-primary hover:underline truncate cursor-pointer"
               >
                 {doc.title}

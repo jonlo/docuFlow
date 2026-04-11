@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/stores/appStore";
 import {
+  type SearchableDocument,
   useAttachDocument,
   useCreateTask,
   useDeleteTask,
@@ -8,11 +9,14 @@ import {
   useUpdateTask,
 } from "@/hooks/useTaskMutations";
 import { useNotionSearch, type NotionSearchResult } from "@/hooks/useNotionSearch";
+import { useConfluenceSearch, type ConfluenceSearchResult } from "@/hooks/useConfluenceSearch";
 import { useTasks } from "@/hooks/useTasks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLabels } from "@/hooks/useLabels";
 import { useSetTaskLabels, useCreateLabel } from "@/hooks/useLabelMutations";
-import type { CalendarEvent, Label, Task } from "@flowdocs/shared";
+import { apiFetch } from "@/services/api";
+import { useAuthStatus } from "@/google/hooks";
+import type { CalendarEvent, Document, Label, Task } from "@flowdocs/shared";
 
 const LABEL_PRESET_COLORS = [
   "#6B5ECD", "#4F9CF9", "#38BFA1", "#F97316",
@@ -26,6 +30,17 @@ const STATUS_LABELS: Record<UIStatus, string> = {
   in_progress: "In Progress",
   completed:   "Completed",
 };
+
+const PROVIDER_LABELS: Record<Document["provider"], string> = {
+  notion: "Notion",
+  confluence: "Confluence",
+};
+
+type SearchProvider = Document["provider"];
+
+interface QueuedDocument extends SearchableDocument {
+  provider: SearchProvider;
+}
 
 // UI status ↔ DB status mapping
 function toDbStatus(s: UIStatus): Task["status"] {
@@ -73,6 +88,7 @@ export default function TaskFormModal() {
   const createLabel    = useCreateLabel();
   const qc             = useQueryClient();
   const { data: allLabels = [] } = useLabels();
+  const { data: auth } = useAuthStatus();
 
   const [title, setTitle]               = useState("");
   const [status, setStatus]             = useState<UIStatus>("waiting");
@@ -92,11 +108,12 @@ export default function TaskFormModal() {
   const labelSectionRef = useRef<HTMLDivElement>(null);
 
   // Document search
+  const [activeProvider, setActiveProvider]   = useState<SearchProvider>("notion");
   const [searchInput, setSearchInput]       = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showDropdown, setShowDropdown]     = useState(false);
   // Create-mode queued docs (not yet persisted)
-  const [queuedDocs, setQueuedDocs]         = useState<NotionSearchResult[]>([]);
+  const [queuedDocs, setQueuedDocs]         = useState<QueuedDocument[]>([]);
 
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -107,7 +124,15 @@ export default function TaskFormModal() {
   }, [searchInput]);
 
   const notionSearch    = useNotionSearch(debouncedSearch);
-  const isNotConfigured = (notionSearch.error as (Error & { code?: string }) | null)?.code === "NOTION_NOT_CONFIGURED";
+  const confluenceSearch = useConfluenceSearch(debouncedSearch);
+  const isNotionConnected = !!auth?.notion?.connected;
+  const isConfluenceConnected = !!auth?.confluenceConnected;
+  const activeSearch = activeProvider === "notion" ? notionSearch : confluenceSearch;
+  const activeSearchResults = (activeSearch.data ?? []) as Array<NotionSearchResult | ConfluenceSearchResult>;
+  const activeSearchError = activeSearch.error as (Error & { code?: string }) | null;
+  const isNotConfigured = activeProvider === "notion"
+    ? activeSearchError?.code === "NOTION_NOT_CONFIGURED" || !isNotionConnected
+    : activeSearchError?.code === "CONFLUENCE_NOT_CONFIGURED" || !isConfluenceConnected;
 
   // Resolve linked event title from cache
   const cachedEvents = qc.getQueryData<CalendarEvent[]>(["calendarEvents"]) ?? [];
@@ -142,6 +167,7 @@ export default function TaskFormModal() {
     setSearchInput("");
     setDebouncedSearch("");
     setShowDropdown(false);
+    setActiveProvider("notion");
     setQueuedDocs([]);
     setSelectedLabels(currentTask?.labels ?? []);
     setLabelInput("");
@@ -205,7 +231,11 @@ export default function TaskFormModal() {
         savedTaskId = newTask.id;
         // Attach queued docs after creation
         for (const doc of queuedDocs) {
-          await attachDocument.mutateAsync({ taskId: newTask.id, doc });
+          await attachDocument.mutateAsync({
+            taskId: newTask.id,
+            provider: doc.provider,
+            doc,
+          });
         }
       } else if (taskId) {
         await updateTask.mutateAsync({
@@ -237,26 +267,32 @@ export default function TaskFormModal() {
     }
   }
 
-  async function handleSelectResult(result: NotionSearchResult) {
+  async function handleConnectProvider(provider: SearchProvider) {
+    const path = provider === "notion" ? "/api/auth/notion/url" : "/api/auth/confluence/url";
+    const { url } = await apiFetch<{ url: string }>(path);
+    window.open(url, `${provider}-oauth`, "width=500,height=650");
+  }
+
+  async function handleSelectResult(result: SearchableDocument) {
     setShowDropdown(false);
     setSearchInput("");
     setDebouncedSearch("");
 
     if (mode === "edit" && taskId) {
       try {
-        await attachDocument.mutateAsync({ taskId, doc: result });
+        await attachDocument.mutateAsync({ taskId, provider: activeProvider, doc: result });
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : "Failed to attach document");
       }
     } else {
       // Create mode: queue unless already queued
-      if (!queuedDocs.some((d) => d.id === result.id)) {
-        setQueuedDocs((prev) => [...prev, result]);
+      if (!queuedDocs.some((d) => d.id === result.id && d.provider === activeProvider)) {
+        setQueuedDocs((prev) => [...prev, { ...result, provider: activeProvider }]);
       }
     }
   }
 
-  async function handleDetach(documentId: string) {
+  async function handleDetach(documentId: string, provider?: SearchProvider) {
     if (mode === "edit" && taskId) {
       try {
         await detachDocument.mutateAsync({ taskId, documentId });
@@ -264,7 +300,7 @@ export default function TaskFormModal() {
         setSubmitError(err instanceof Error ? err.message : "Failed to detach document");
       }
     } else {
-      setQueuedDocs((prev) => prev.filter((d) => d.id !== documentId));
+      setQueuedDocs((prev) => prev.filter((d) => !(d.id === documentId && d.provider === provider)));
     }
   }
 
@@ -292,12 +328,28 @@ export default function TaskFormModal() {
   }
 
   // Documents to display in the list
-  const displayDocs: Array<{ id: string; providerDocId: string; title: string; url: string }> =
+  const displayDocs: Array<{
+    id: string;
+    provider: SearchProvider;
+    providerDocId: string;
+    title: string;
+    url: string;
+  }> =
     mode === "edit"
-      ? currentDocs.map((d) => ({ id: d.id, providerDocId: d.providerDocId, title: d.title, url: d.url }))
-      : queuedDocs.map((d) => ({ id: d.id, providerDocId: d.id, title: d.title, url: d.url }));
-
-  const searchResults = notionSearch.data ?? [];
+      ? currentDocs.map((d) => ({
+        id: d.id,
+        provider: d.provider,
+        providerDocId: d.providerDocId,
+        title: d.title,
+        url: d.url,
+      }))
+      : queuedDocs.map((d) => ({
+        id: `${d.provider}:${d.id}`,
+        provider: d.provider,
+        providerDocId: d.id,
+        title: d.title,
+        url: d.url,
+      }));
 
   return (
     <div
@@ -477,21 +529,56 @@ export default function TaskFormModal() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Documents</label>
 
+            <div className="flex gap-1">
+              {(["notion", "confluence"] as SearchProvider[]).map((provider) => (
+                <button
+                  key={provider}
+                  type="button"
+                  onClick={() => {
+                    setActiveProvider(provider);
+                    setSearchInput("");
+                    setDebouncedSearch("");
+                    setShowDropdown(false);
+                  }}
+                  className={[
+                    "flex-1 text-xs py-1.5 rounded-lg border transition-colors font-medium",
+                    activeProvider === provider
+                      ? "bg-accent-primary text-white border-accent-primary"
+                      : "bg-surface-base text-text-muted border-surface-border hover:border-accent-primary/50",
+                  ].join(" ")}
+                >
+                  {PROVIDER_LABELS[provider]}
+                </button>
+              ))}
+            </div>
+
             {/* Attached docs list */}
             {displayDocs.length > 0 && (
               <ul className="flex flex-col gap-1 mb-1">
                 {displayDocs.map((doc) => (
                   <li key={doc.id} className="flex items-center justify-between gap-2 text-xs bg-surface-base rounded-lg px-2 py-1.5 border border-surface-border">
-                    <a
-                      href={doc.url}
-                      onClick={(e) => { e.preventDefault(); openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url }); }}
-                      className="text-accent-primary hover:underline truncate flex-1 cursor-pointer"
-                    >
-                      {doc.title}
-                    </a>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <a
+                        href={doc.url}
+                        onClick={(e) => {
+                          if (doc.provider === "notion") {
+                            e.preventDefault();
+                            openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url });
+                          }
+                        }}
+                        target={doc.provider === "confluence" ? "_blank" : undefined}
+                        rel={doc.provider === "confluence" ? "noreferrer" : undefined}
+                        className="text-accent-primary hover:underline truncate flex-1 cursor-pointer"
+                      >
+                        {doc.title}
+                      </a>
+                      <span className="text-[10px] uppercase tracking-wide rounded-full border border-surface-border px-1.5 py-0.5 text-text-muted flex-shrink-0">
+                        {PROVIDER_LABELS[doc.provider]}
+                      </span>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => handleDetach(doc.id)}
+                      onClick={() => handleDetach(doc.providerDocId, doc.provider)}
                       className="text-text-muted hover:text-red-500 transition-colors flex-shrink-0"
                       aria-label="Detach document"
                     >
@@ -502,9 +589,18 @@ export default function TaskFormModal() {
               </ul>
             )}
 
-            {/* Search input or "Connect Notion first" */}
+            {/* Search input or "Connect [Provider] first" */}
             {isNotConfigured ? (
-              <p className="text-xs text-text-muted italic">Connect Notion first</p>
+              <p className="text-xs text-text-muted italic">
+                Connect {PROVIDER_LABELS[activeProvider]} first.
+                <button
+                  type="button"
+                  onClick={() => { void handleConnectProvider(activeProvider); }}
+                  className="ml-1 text-accent-primary hover:underline not-italic"
+                >
+                  Connect
+                </button>
+              </p>
             ) : (
               <div ref={searchRef} className="relative">
                 <input
@@ -515,20 +611,23 @@ export default function TaskFormModal() {
                     setShowDropdown(true);
                   }}
                   onFocus={() => { if (debouncedSearch.length >= 2) setShowDropdown(true); }}
-                  placeholder="Search Notion pages…"
+                  placeholder={activeProvider === "notion" ? "Search Notion pages..." : "Search Confluence pages..."}
                   className="w-full border border-surface-border rounded-lg px-3 py-2 text-xs text-text-base bg-surface-base focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
                 />
 
                 {/* Dropdown */}
                 {showDropdown && debouncedSearch.length >= 2 && (
                   <div className="absolute z-10 mt-1 w-full bg-surface-raised border border-surface-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {notionSearch.isLoading && (
+                    {activeSearch.isLoading && (
                       <div className="px-3 py-2 text-xs text-text-muted">Searching…</div>
                     )}
-                    {!notionSearch.isLoading && searchResults.length === 0 && (
+                    {!activeSearch.isLoading && activeSearchResults.length === 0 && (
                       <div className="px-3 py-2 text-xs text-text-muted">No results</div>
                     )}
-                    {searchResults.map((result) => (
+                    {!activeSearch.isLoading && activeSearchError?.code === "CONFLUENCE_TOKEN_EXPIRED" && (
+                      <div className="px-3 py-2 text-xs text-text-muted">Reconnect Confluence to keep searching.</div>
+                    )}
+                    {activeSearchResults.map((result) => (
                       <button
                         key={result.id}
                         type="button"

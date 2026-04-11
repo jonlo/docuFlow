@@ -1,7 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/services/api";
-import type { CreateTaskBody, Task, UpdateTaskBody } from "@flowdocs/shared";
-import type { NotionSearchResult } from "./useNotionSearch";
+import type { CreateTaskBody, Document, Task, UpdateTaskBody } from "@flowdocs/shared";
+
+export interface SearchableDocument {
+  id: string;
+  title: string;
+  url: string;
+}
 
 function invalidateTasks(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["tasks"] });
@@ -59,11 +64,15 @@ export function usePauseTimer() {
 
 export function useAttachDocument() {
   const qc = useQueryClient();
-  return useMutation<Task, Error, { taskId: string; doc: NotionSearchResult }>({
-    mutationFn: ({ taskId, doc }) =>
+  return useMutation<Task, Error, {
+    taskId: string;
+    provider: Document["provider"];
+    doc: SearchableDocument;
+  }>({
+    mutationFn: ({ taskId, provider, doc }) =>
       apiFetch<Task>(`/api/tasks/${taskId}/documents`, {
         method: "POST",
-        body: JSON.stringify({ providerDocId: doc.id, title: doc.title, url: doc.url }),
+        body: JSON.stringify({ provider, providerDocId: doc.id, title: doc.title, url: doc.url }),
       }),
     onSuccess: () => invalidateTasks(qc),
   });

@@ -11,6 +11,9 @@ export interface Session {
   confluenceDomain?: string;
   confluenceEmail?: string;
   confluenceToken?: string;
+  confluenceRefreshToken?: string;
+  confluenceTokenExpiry?: number;
+  confluenceCloudId?: string;
 }
 
 // ── Session ───────────────────────────────────────────────────────────────────

@@ -262,19 +262,27 @@ taskRoutes.post("/:id/documents", async (c) => {
     .bind(taskId).first<{ id: string }>();
   if (!task) return c.json({ error: "Task not found", code: "NOT_FOUND" }, 404);
 
-  const body = await c.req.json<{ providerDocId?: string; title?: string; url?: string }>();
+  const body = await c.req.json<{
+    provider?: "notion" | "confluence";
+    providerDocId?: string;
+    title?: string;
+    url?: string;
+  }>();
+  if (!body.provider || !["notion", "confluence"].includes(body.provider)) {
+    return c.json({ error: "provider is required", code: "BAD_REQUEST" }, 400);
+  }
   if (!body.providerDocId?.trim() || !body.title?.trim() || !body.url?.trim()) {
     return c.json({ error: "providerDocId, title, and url are required", code: "BAD_REQUEST" }, 400);
   }
 
   const docId = crypto.randomUUID();
   await c.env.DB.prepare(
-    "INSERT OR IGNORE INTO documents (id, provider, provider_doc_id, title, url) VALUES (?, 'notion', ?, ?, ?)"
-  ).bind(docId, body.providerDocId.trim(), body.title.trim(), body.url.trim()).run();
+    "INSERT OR IGNORE INTO documents (id, provider, provider_doc_id, title, url) VALUES (?, ?, ?, ?, ?)"
+  ).bind(docId, body.provider, body.providerDocId.trim(), body.title.trim(), body.url.trim()).run();
 
   const doc = await c.env.DB.prepare(
-    "SELECT id FROM documents WHERE provider = 'notion' AND provider_doc_id = ?"
-  ).bind(body.providerDocId.trim()).first<{ id: string }>();
+    "SELECT id FROM documents WHERE provider = ? AND provider_doc_id = ?"
+  ).bind(body.provider, body.providerDocId.trim()).first<{ id: string }>();
 
   const existing = await c.env.DB.prepare(
     "SELECT 1 FROM task_documents WHERE task_id = ? AND document_id = ?"

@@ -11,6 +11,7 @@ authRoutes.get("/status", async (c) => {
     google:     { provider: "google",     connected: false },
     notion:     { provider: "notion",     connected: false },
     confluence: { provider: "confluence", connected: false },
+    confluenceConnected: false,
   };
   const result = await getSession(c);
   if (!result) return c.json(base);
@@ -87,7 +88,14 @@ authRoutes.delete("/:provider", async (c) => {
   const session = { ...result.session };
   if (provider === "google")     { delete session.googleAccessToken; delete session.googleRefreshToken; delete session.googleEmail; }
   if (provider === "notion")     { delete session.notionToken; }
-  if (provider === "confluence") { delete session.confluenceToken; delete session.confluenceDomain; delete session.confluenceEmail; }
+  if (provider === "confluence") {
+    delete session.confluenceToken;
+    delete session.confluenceRefreshToken;
+    delete session.confluenceTokenExpiry;
+    delete session.confluenceCloudId;
+    delete session.confluenceDomain;
+    delete session.confluenceEmail;
+  }
   await saveSession(c, result.sessionId, session);
   return c.json({ success: true });
 });

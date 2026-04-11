@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { googleRoutes } from "./google/routes";
+import { confluenceAuthRoutes } from "./routes/confluenceAuth";
+import { confluenceRoutes } from "./routes/confluence";
 import { authRoutes } from "./routes/auth";
 import { documentRoutes } from "./routes/documents";
 import { labelRoutes } from "./routes/labels";
@@ -24,6 +26,7 @@ app.route("/api", googleRoutes);
 
 // Auth: /api/auth/status, /api/auth/notion, /api/auth/:provider
 app.route("/api/auth", authRoutes);
+app.route("/api/auth/confluence", confluenceAuthRoutes);
 
 // Documents: /api/documents/*
 app.route("/api/documents", documentRoutes);
@@ -33,6 +36,9 @@ app.route("/api/labels", labelRoutes);
 
 // Notion: /api/notion/*
 app.route("/api/notion", notionRoutes);
+
+// Confluence: /api/confluence/*
+app.route("/api/confluence", confluenceRoutes);
 
 // Tasks: /api/tasks/*
 app.route("/api/tasks", taskRoutes);

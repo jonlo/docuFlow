@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { CalendarEvent, Integration, Label, Task } from "@flowdocs/shared";
+import type { AuthStatus, CalendarEvent, Integration, Label, Task } from "@flowdocs/shared";
 
 export interface EventFormValues {
   title: string;
@@ -22,6 +22,7 @@ interface EventModalState {
 interface AppState {
   integrations: Integration[];
   setIntegration: (integration: Integration) => void;
+  setAuthStatus: (authStatus: AuthStatus) => void;
   getIntegration: (provider: Integration["provider"]) => Integration | undefined;
 
   calendarView: "month" | "week" | "day" | "agenda";
@@ -89,6 +90,18 @@ export const useAppStore = create<AppState>()(
             i.provider === integration.provider ? integration : i
           ),
         })),
+
+      setAuthStatus: (authStatus) =>
+        set({
+          integrations: [
+            authStatus.google,
+            authStatus.notion,
+            {
+              ...authStatus.confluence,
+              connected: authStatus.confluenceConnected,
+            },
+          ],
+        }),
 
       getIntegration: (provider) =>
         get().integrations.find((i) => i.provider === provider),

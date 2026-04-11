@@ -113,7 +113,14 @@ export function TaskDetailDialog({ task, linkedEventTitle, onClose }: Props): JS
               <a
                 key={doc.id}
                 href={doc.url}
-                onClick={(e) => { e.preventDefault(); openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url }); }}
+                onClick={(e) => {
+                  if (doc.provider === "notion") {
+                    e.preventDefault();
+                    openDocumentPage({ id: doc.providerDocId, title: doc.title, url: doc.url });
+                  }
+                }}
+                target={doc.provider === "confluence" ? "_blank" : undefined}
+                rel={doc.provider === "confluence" ? "noreferrer" : undefined}
                 className="text-xs text-accent-primary hover:underline truncate cursor-pointer"
               >
                 {doc.title}
