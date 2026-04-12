@@ -15,7 +15,15 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", logger());
 app.use("*", cors({
-  origin: ["http://localhost:5173", "https://flowdocs.pages.dev"],
+  origin: (origin) => {
+    if (!origin) return null;
+    if (
+      origin === "http://localhost:5173" ||
+      origin === "https://docuflow-d69.pages.dev" ||
+      /^https:\/\/[a-z0-9]+\.docuflow-d69\.pages\.dev$/.test(origin)
+    ) return origin;
+    return null;
+  },
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type"],
   credentials: true,
