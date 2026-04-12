@@ -1,4 +1,4 @@
-const BASE = import.meta.env["VITE_API_URL"] ?? "";
+const BASE = (import.meta.env["VITE_API_URL"] as string | undefined) ?? "";
 
 export async function apiFetch<T>(
   path: string,
