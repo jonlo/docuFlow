@@ -55,9 +55,13 @@ jobs:
 
       # Chromium covers: chromium + mobile-chrome (Pixel 5)
       # WebKit covers:   mobile-safari (iPhone 14)
-      # --with-deps is omitted: GitHub Actions runners have browser system deps pre-installed
+      # ubuntu-latest (24.04) has stale PPAs (deadsnakes, ondrej/php) that
+      # cause `apt-get update` to fail with 403. Remove them first so that
+      # `playwright install --with-deps` can install browser system libraries.
       - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium webkit
+        run: |
+          sudo grep -rl "deadsnakes\|ondrej" /etc/apt/sources.list.d/ 2>/dev/null | xargs sudo rm -f || true
+          pnpm exec playwright install --with-deps chromium webkit
         working-directory: packages/e2e
 
       - name: Run E2E tests
