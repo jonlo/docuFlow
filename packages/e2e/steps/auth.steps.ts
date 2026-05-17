@@ -57,12 +57,14 @@ Then('the connect Google Calendar button is not visible', async ({ page }) => {
 });
 
 Then('clicking the connect button opens a Google accounts popup', async ({ page }) => {
+  // Intercept Google's domain at context level so the popup loads instantly
+  // without hitting the real Google server (which may be slow or unavailable in CI).
+  await page.context().route(/accounts\.google\.com/, route =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<html><body>Mock OAuth</body></html>' }),
+  );
   const popupPromise = page.waitForEvent('popup');
   await page.getByRole('button', { name: /connect google calendar/i }).click();
   const popup = await popupPromise;
-  // waitForURL with waitUntil:'commit' checks the URL as soon as navigation
-  // starts, without waiting for the page to fully load (Google's page is
-  // external and won't load in the mocked test environment).
-  await popup.waitForURL(/accounts\.google\.com/, { waitUntil: 'commit', timeout: 10_000 });
+  await popup.waitForLoadState('load', { timeout: 10_000 });
   expect(popup.url()).toContain('accounts.google.com');
 });
