@@ -65,6 +65,7 @@ Then('clicking the connect button opens a Google accounts popup', async ({ page 
   const popupPromise = page.waitForEvent('popup');
   await page.getByRole('button', { name: /connect google calendar/i }).click();
   const popup = await popupPromise;
-  await popup.waitForLoadState('load', { timeout: 10_000 });
-  expect(popup.url()).toContain('accounts.google.com');
+  // waitForURL is safe here because context.route() above intercepts accounts.google.com
+  // and serves a mock response immediately — no real network needed.
+  await popup.waitForURL(/accounts\.google\.com/, { timeout: 10_000 });
 });
