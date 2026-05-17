@@ -55,8 +55,9 @@ jobs:
 
       # Chromium covers: chromium + mobile-chrome (Pixel 5)
       # WebKit covers:   mobile-safari (iPhone 14)
+      # --with-deps is omitted: GitHub Actions runners have browser system deps pre-installed
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install chromium webkit
         working-directory: packages/e2e
 
       - name: Run E2E tests
