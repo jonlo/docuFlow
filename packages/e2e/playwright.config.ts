@@ -4,12 +4,12 @@ import * as path from 'path';
 
 const repoRoot = path.resolve(__dirname, '../..');
 
+const commonBddConfig = {
+  steps: 'steps/**/*.ts',
+  importTestFrom: 'fixtures/auth.ts',
+};
+
 export default defineConfig({
-  testDir: defineBddConfig({
-    features: 'features/**/*.feature',
-    steps: 'steps/**/*.ts',
-    importTestFrom: 'fixtures/auth.ts',
-  }),
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
@@ -25,6 +25,26 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testDir: defineBddConfig({
+        ...commonBddConfig,
+        features: 'features/desktop/**/*.feature',
+      }),
+    },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+      testDir: defineBddConfig({
+        ...commonBddConfig,
+        features: 'features/mobile/**/*.feature',
+      }),
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 14'] },
+      testDir: defineBddConfig({
+        ...commonBddConfig,
+        features: 'features/mobile/**/*.feature',
+      }),
     },
   ],
 

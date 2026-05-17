@@ -218,10 +218,12 @@ function TaskRow({ task, onDetail }: { task: Task; onDetail: (t: Task) => void }
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export function Sidebar(): JSX.Element {
-  const openEventModal  = useAppStore((s) => s.openEventModal);
-  const openTaskModal   = useAppStore((s) => s.openTaskModal);
-  const activePage      = useAppStore((s) => s.activePage);
-  const setActivePage   = useAppStore((s) => s.setActivePage);
+  const openEventModal       = useAppStore((s) => s.openEventModal);
+  const openTaskModal        = useAppStore((s) => s.openTaskModal);
+  const activePage           = useAppStore((s) => s.activePage);
+  const setActivePage        = useAppStore((s) => s.setActivePage);
+  const mobileSidebarOpen    = useAppStore((s) => s.mobileSidebarOpen);
+  const setMobileSidebarOpen = useAppStore((s) => s.setMobileSidebarOpen);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -262,17 +264,36 @@ export function Sidebar(): JSX.Element {
 
   function handleNewEvent() {
     setPickerOpen(false);
+    setMobileSidebarOpen(false);
     setActivePage("calendar");
     openEventModal("create");
   }
 
   function handleNewTask() {
     setPickerOpen(false);
+    setMobileSidebarOpen(false);
     openTaskModal("create");
   }
 
   return (
-    <aside className="flex flex-col gap-1 h-full bg-surface-raised border-r border-surface-border px-3 py-4">
+    <aside
+      data-testid="sidebar"
+      className={`sidebar flex flex-col gap-1 h-full bg-surface-raised border-r border-surface-border px-3 py-4${mobileSidebarOpen ? " sidebar-open" : ""}`}
+    >
+      {/* Mobile close button */}
+      <button
+        type="button"
+        data-testid="sidebar-close-button"
+        onClick={() => setMobileSidebarOpen(false)}
+        aria-label="Close navigation menu"
+        className="sidebar-close-btn mb-1 p-1 rounded-lg text-text-muted hover:bg-surface-base transition-colors"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+
       <div className="font-display font-bold text-sm tracking-wide text-text-base mb-4 px-2">
         FlowDocs
       </div>
@@ -314,7 +335,7 @@ export function Sidebar(): JSX.Element {
 
       {/* Nav items */}
       <button
-        onClick={() => setActivePage("calendar")}
+        onClick={() => { setActivePage("calendar"); setMobileSidebarOpen(false); }}
         className={[
           "text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2 mt-1",
           activePage === "calendar"
@@ -325,7 +346,7 @@ export function Sidebar(): JSX.Element {
         Calendar
       </button>
       <button
-        onClick={() => setActivePage("tasks")}
+        onClick={() => { setActivePage("tasks"); setMobileSidebarOpen(false); }}
         className={[
           "text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2",
           activePage === "tasks"
@@ -336,7 +357,7 @@ export function Sidebar(): JSX.Element {
         Tasks
       </button>
       <button
-        onClick={() => setActivePage("reports")}
+        onClick={() => { setActivePage("reports"); setMobileSidebarOpen(false); }}
         className={[
           "text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2",
           activePage === "reports"
@@ -398,7 +419,7 @@ export function Sidebar(): JSX.Element {
       </div>
 
       <button
-        onClick={() => setActivePage("labels")}
+        onClick={() => { setActivePage("labels"); setMobileSidebarOpen(false); }}
         className={[
           "text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors border-l-2",
           activePage === "labels"

@@ -40,3 +40,60 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #C8C8DC; border-radius: 2px; }
+
+/* Mobile header — hamburger + logo, hidden on desktop */
+.mobile-header {
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #E2E2EE;
+  background: #FAFAFF;
+  flex-shrink: 0;
+}
+
+/* Sidebar close button — hidden on desktop */
+.sidebar-close-btn {
+  display: none;
+}
+
+/* Backdrop overlay behind the open sidebar drawer */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 40;
+}
+
+@media (max-width: 767px) {
+  /* Collapse sidebar grid column — sidebar becomes a fixed drawer */
+  .app-shell,
+  .app-shell:has(.task-panel) {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-header {
+    display: flex;
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+    align-self: flex-end;
+  }
+
+  /* Sidebar drawer: off-screen by default, slides in when open */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: var(--sidebar-width);
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease-in-out;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+}
