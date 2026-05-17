@@ -47,6 +47,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('packages/e2e/package.json') }}
+
       # Chromium covers: chromium + mobile-chrome (Pixel 5)
       # WebKit covers:   mobile-safari (iPhone 14)
       - name: Install Playwright browsers
