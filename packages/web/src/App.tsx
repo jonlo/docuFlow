@@ -33,7 +33,7 @@ export default function App(): JSX.Element {
             onClick={() => setMobileSidebarOpen(false)}
           />
         )}
-        <main className="main-content">
+        <main className="main-content" data-page={activePage}>
           <div className="mobile-header" data-testid="mobile-header">
             <button
               type="button"
@@ -46,20 +46,10 @@ export default function App(): JSX.Element {
             </button>
             <span className="font-display font-bold text-sm tracking-wide text-text-base">FlowDocs</span>
           </div>
-          <div
-            className="flex-1 min-h-0 overflow-hidden"
-            data-testid={
-              activePage === "labels" ? "labels-page" :
-              activePage === "tasks" ? "tasks-page" :
-              activePage === "reports" ? "reports-page" :
-              "calendar-page"
-            }
-          >
-            {activePage === "labels" ? <LabelsPage /> :
-             activePage === "tasks" ? <TaskListView /> :
-             activePage === "reports" ? <ReportsPage /> :
-             <CalendarView />}
-          </div>
+          {activePage === "labels" ? <LabelsPage /> :
+           activePage === "tasks" ? <TaskListView /> :
+           activePage === "reports" ? <ReportsPage /> :
+           <CalendarView />}
         </main>
         {selectedTaskId && (
           <aside className="task-panel">

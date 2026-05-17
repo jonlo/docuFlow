@@ -67,9 +67,9 @@ When('I select Task from the new item picker', async ({ page }) => {
 // ── Page assertions ───────────────────────────────────────────────────────────
 
 Then('the tasks page is visible', async ({ page }) => {
-  await expect(page.locator('[data-testid="tasks-page"]')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('main[data-page="tasks"]')).toBeVisible({ timeout: 10_000 });
 });
 
 Then('the reports page is visible', async ({ page }) => {
-  await expect(page.locator('[data-testid="reports-page"]')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('main[data-page="reports"]')).toBeVisible({ timeout: 10_000 });
 });
