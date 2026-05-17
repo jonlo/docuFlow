@@ -38,11 +38,7 @@ When('I tap the sidebar close button', async ({ page }) => {
 });
 
 When('I tap outside the sidebar', async ({ page }) => {
-  // Click to the right of the sidebar (220px wide) to hit the backdrop overlay
-  const sidebar = page.locator('[data-testid="sidebar"]');
-  const box = await sidebar.boundingBox();
-  const tapX = (box ? box.x + box.width : 220) + 50;
-  await page.mouse.click(tapX, 300);
+  await page.locator('[data-testid="sidebar-overlay"]').click();
 });
 
 // ── Mobile navigation ─────────────────────────────────────────────────────────
