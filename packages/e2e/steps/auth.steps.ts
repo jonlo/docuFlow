@@ -57,15 +57,24 @@ Then('the connect Google Calendar button is not visible', async ({ page }) => {
 });
 
 Then('clicking the connect button opens a Google accounts popup', async ({ page }) => {
-  // Intercept Google's domain at context level so the popup loads instantly
-  // without hitting the real Google server (which may be slow or unavailable in CI).
-  await page.context().route(/accounts\.google\.com/, route =>
-    route.fulfill({ status: 200, contentType: 'text/html', body: '<html><body>Mock OAuth</body></html>' }),
-  );
-  const popupPromise = page.waitForEvent('popup');
+  // Stub window.open so no real popup (and no real network request) is needed in CI.
+  // We just verify that clicking the button causes window.open to be called with the
+  // expected Google OAuth URL — that's the observable contract of this feature.
+  await page.evaluate(() => {
+    (window as unknown as Record<string, unknown>)['_capturedOpenUrl'] = null;
+    window.open = (url?: string | URL) => {
+      (window as unknown as Record<string, unknown>)['_capturedOpenUrl'] = String(url ?? '');
+      return null;
+    };
+  });
+
   await page.getByRole('button', { name: /connect google calendar/i }).click();
-  const popup = await popupPromise;
-  // waitForURL is safe here because context.route() above intercepts accounts.google.com
-  // and serves a mock response immediately — no real network needed.
-  await popup.waitForURL(/accounts\.google\.com/, { timeout: 10_000 });
+
+  // Wait until window.open has been called (the app fetches the URL async before opening).
+  const capturedUrl = await page.waitForFunction(
+    () => (window as unknown as Record<string, unknown>)['_capturedOpenUrl'] as string | null,
+    { timeout: 10_000 },
+  );
+
+  expect(await capturedUrl.jsonValue()).toContain('accounts.google.com');
 });
