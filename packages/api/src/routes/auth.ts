@@ -25,9 +25,9 @@ authRoutes.get("/notion/url", async (c) => {
   const state = crypto.randomUUID();
   await c.env.FLOWDOCS_KV.put(`oauth_state:${state}`, "1", { expirationTtl: 300 });
 
-  const redirectUri = c.env.ENVIRONMENT === "production"
-    ? "https://flowdocs-api.workers.dev/api/auth/notion/callback"
-    : "http://localhost:8787/api/auth/notion/callback";
+  const redirectUri = c.env.ENVIRONMENT === "development"
+    ? "http://localhost:8787/api/auth/notion/callback"
+    : "https://flowdocs-api.jon-ldg85.workers.dev/api/auth/notion/callback";
 
   const params = new URLSearchParams({
     client_id:     c.env.NOTION_CLIENT_ID,
@@ -51,9 +51,9 @@ authRoutes.get("/notion/callback", async (c) => {
   if (!stateValid) return c.html("<p>Invalid or expired state. You can close this window.</p>", 400);
   await c.env.FLOWDOCS_KV.delete(`oauth_state:${state}`);
 
-  const redirectUri = c.env.ENVIRONMENT === "production"
-    ? "https://flowdocs-api.workers.dev/api/auth/notion/callback"
-    : "http://localhost:8787/api/auth/notion/callback";
+  const redirectUri = c.env.ENVIRONMENT === "development"
+    ? "http://localhost:8787/api/auth/notion/callback"
+    : "https://flowdocs-api.jon-ldg85.workers.dev/api/auth/notion/callback";
 
   const tokenRes = await fetch("https://api.notion.com/v1/oauth/token", {
     method: "POST",

@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "concurrently \"pnpm --filter @flowdocs/web dev\" \"pnpm --filter @flowdocs/api dev\"",
     "build": "pnpm --filter @flowdocs/shared build && pnpm --filter @flowdocs/web build && pnpm --filter @flowdocs/api build",
-    "typecheck": "tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json"
+    "typecheck": "tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json",
+    "e2e": "fuser -k 5173/tcp 8787/tcp 2>/dev/null; pnpm --filter @flowdocs/e2e test",
+    "e2e:ui": "pnpm --filter @flowdocs/e2e test:ui",
+    "e2e:headed": "pnpm --filter @flowdocs/e2e test:headed"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

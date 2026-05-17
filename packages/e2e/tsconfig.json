@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "noEmit": true
+  },
+  "include": ["steps/**/*.ts", "fixtures/**/*.ts", "playwright.config.ts"]
+}

@@ -1,4 +1,4 @@
-import { Calendar, dateFnsLocalizer, type SlotInfo, type View } from "react-big-calendar";
+import { Calendar, dateFnsLocalizer, type SlotInfo, type ToolbarProps, type View } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { useCalendarEvents } from "./hooks";
@@ -116,22 +116,11 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
   if (event.type === "task" && event.task) {
     const colors = taskStatusColor(event.task.status);
     return (
-      <div ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full" style={{ color: colors.text }}>
-        <div className="flex items-center gap-1 overflow-hidden" style={{ flexWrap: "nowrap" }}>
-          <TaskIcon />
-          <span
-            className="font-medium text-xs leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
-            style={{ maxWidth: "90%" }}
-          >
-            {event.title}
-          </span>
-        </div>
-        {tall && (
-          <span style={{ fontSize: 10, opacity: 0.7, lineHeight: 1.2 }}>{start} – {end}</span>
-        )}
-        {!tall && (
-          <span style={{ fontSize: 10, opacity: 0.7, lineHeight: 1.2 }}>{start} – {end}</span>
-        )}
+      <div data-testid="calendar-event" data-task="true" ref={rootRef} className="flex items-center gap-1 overflow-hidden h-full" style={{ color: colors.text }}>
+        <TaskIcon />
+        <span className="font-medium text-xs leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+          {event.title}
+        </span>
       </div>
     );
   }
@@ -169,7 +158,7 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
 
   if (!tall) {
     return (
-      <div ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full">
+      <div data-testid="calendar-event" ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full">
         <div className="flex items-center gap-1 overflow-hidden" style={{ flexWrap: "nowrap" }}>
           <span
             className="font-medium text-xs leading-tight flex-shrink-0 whitespace-nowrap overflow-hidden text-ellipsis"
@@ -195,7 +184,7 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
   }
 
   return (
-    <div ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full">
+    <div data-testid="calendar-event" ref={rootRef} className="flex flex-col gap-0.5 overflow-hidden h-full">
       <span className="font-medium text-xs leading-tight truncate">{event.title}</span>
       {labels.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
@@ -221,8 +210,28 @@ function EventBlock({ event }: { event: RbcEvent }): JSX.Element {
 }
 
 
+function CalendarToolbar({ label, onNavigate, onView, view }: ToolbarProps<RbcEvent>) {
+  return (
+    <div className="rbc-toolbar">
+      <span className="rbc-btn-group">
+        <button type="button" onClick={() => onNavigate("TODAY")}>Today</button>
+        <button type="button" onClick={() => onNavigate("PREV")}>Back</button>
+        <button type="button" onClick={() => onNavigate("NEXT")}>Next</button>
+      </span>
+      <span data-testid="calendar-header" className="rbc-toolbar-label">{label}</span>
+      <span className="rbc-btn-group">
+        {(["month", "week", "day"] as View[]).map((v) => (
+          <button key={v} type="button" className={view === v ? "rbc-active" : ""} onClick={() => onView(v)}>
+            {v.charAt(0).toUpperCase() + v.slice(1)}
+          </button>
+        ))}
+      </span>
+    </div>
+  );
+}
+
 export function CalendarView(): JSX.Element {
-  const [view, setView] = useState<View>("week");
+  const [view, setView] = useState<View>("day");
   const [date, setDate] = useState(new Date());
   const [flashEventId, setFlashEventId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -231,6 +240,7 @@ export function CalendarView(): JSX.Element {
   const { data: allTasks = [] } = useTasks();
   const openEventModal      = useAppStore((s) => s.openEventModal);
   const openDetailModal     = useAppStore((s) => s.openDetailModal);
+  const openTaskModal       = useAppStore((s) => s.openTaskModal);
   const highlightEventId    = useAppStore((s) => s.highlightEventId);
   const setHighlightEventId = useAppStore((s) => s.setHighlightEventId);
   const highlightTaskId     = useAppStore((s) => s.highlightTaskId);
@@ -263,10 +273,16 @@ export function CalendarView(): JSX.Element {
   }, [flashEventId]);
 
   function eventPropGetter(event: RbcEvent) {
+    const base = {
+      "data-testid": "calendar-event",
+      "data-task": event.type === "task" ? "true" : undefined,
+    } as Record<string, string | undefined>;
+
     // Task blocks: status-based color
     if (event.type === "task" && event.task) {
       const colors = taskStatusColor(event.task.status);
       return {
+        ...base,
         className: event.isFlashing ? "rbc-event-flash" : undefined,
         style: {
           backgroundColor: colors.bg,
@@ -281,6 +297,7 @@ export function CalendarView(): JSX.Element {
     const family = colorIdToFamily(event.resource?.colorId, event._index);
     const { bg, border } = EVENT_COLORS[family];
     return {
+      ...base,
       className: event.isFlashing ? "rbc-event-flash" : undefined,
       style: {
         backgroundColor: bg,
@@ -334,7 +351,7 @@ export function CalendarView(): JSX.Element {
   function handleSelectEvent(event: RbcEvent) {
     if (event.type === "task" && event.task) {
       setFlashEventId(event.id);
-      setSelectedTask(event.task);
+      openTaskModal("edit", { title: event.task.title, status: event.task.status, eventId: event.task.eventId }, event.task.id);
     } else if (event.resource) {
       openDetailModal(event.resource);
     }
@@ -365,7 +382,16 @@ export function CalendarView(): JSX.Element {
   }
 
   return (
-    <div className="flowdocs-calendar flex flex-col h-full p-4 gap-3">
+    <div data-testid="calendar-view" className="flowdocs-calendar flex flex-col h-full p-4 gap-3">
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => openTaskModal("create")}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary/90 transition-colors"
+        >
+          New Task
+        </button>
+      </div>
       <div className="flex-1 min-h-0">
         <Calendar
           localizer={localizer}
@@ -380,7 +406,7 @@ export function CalendarView(): JSX.Element {
           onSelectEvent={handleSelectEvent}
           style={{ height: "100%" }}
           eventPropGetter={eventPropGetter}
-          components={{ event: EventBlock }}
+          components={{ event: EventBlock, toolbar: CalendarToolbar }}
         />
       </div>
       <EventFormModal />

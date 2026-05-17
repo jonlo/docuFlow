@@ -1,0 +1,16 @@
+{
+  "name": "@flowdocs/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "pretest": "bddgen",
+    "test": "dotenv -e .env -- playwright test",
+    "test:ui": "dotenv -e .env -- playwright test --ui",
+    "test:headed": "dotenv -e .env -- playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "dotenv-cli": "^11.0.0",
+    "playwright-bdd": "^8.5.1"
+  }
+}

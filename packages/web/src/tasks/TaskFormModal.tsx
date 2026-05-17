@@ -357,7 +357,7 @@ export default function TaskFormModal() {
       style={{ zIndex: 60 }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) closeTaskModal(); }}
     >
-      <div className="bg-surface-raised w-full max-w-sm rounded-xl shadow-xl border border-surface-border p-5 flex flex-col gap-4">
+      <div data-testid="task-panel" className="bg-surface-raised w-full max-w-sm rounded-xl shadow-xl border border-surface-border p-5 flex flex-col gap-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-text-base font-semibold text-base">
@@ -371,7 +371,7 @@ export default function TaskFormModal() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form data-testid="task-form" onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* Linked event chip */}
           {linkedEvent && (
             <div className="flex items-center gap-2">
@@ -389,8 +389,9 @@ export default function TaskFormModal() {
 
           {/* Title */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Title</label>
+            <label htmlFor="task-title" className="text-xs font-medium text-text-muted uppercase tracking-wide">Title</label>
             <input
+              id="task-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -503,8 +504,9 @@ export default function TaskFormModal() {
               <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Date &amp; Time</label>
               <div className="flex gap-2">
                 <div className="flex flex-col gap-0.5 flex-1">
-                  <span className="text-[10px] text-text-muted">Start</span>
+                  <label htmlFor="task-start" className="text-[10px] text-text-muted">Start</label>
                   <input
+                    id="task-start"
                     type="datetime-local"
                     value={startDt}
                     onChange={(e) => setStartDt(e.target.value)}
@@ -512,8 +514,9 @@ export default function TaskFormModal() {
                   />
                 </div>
                 <div className="flex flex-col gap-0.5 flex-1">
-                  <span className="text-[10px] text-text-muted">End</span>
+                  <label htmlFor="task-end" className="text-[10px] text-text-muted">End</label>
                   <input
+                    id="task-end"
                     type="datetime-local"
                     value={endDt}
                     onChange={(e) => setEndDt(e.target.value)}
@@ -529,34 +532,26 @@ export default function TaskFormModal() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-text-muted uppercase tracking-wide">Documents</label>
 
-            <div className="flex gap-1">
-              {(["notion", "confluence"] as SearchProvider[]).map((provider) => (
-                <button
-                  key={provider}
-                  type="button"
-                  onClick={() => {
-                    setActiveProvider(provider);
-                    setSearchInput("");
-                    setDebouncedSearch("");
-                    setShowDropdown(false);
-                  }}
-                  className={[
-                    "flex-1 text-xs py-1.5 rounded-lg border transition-colors font-medium",
-                    activeProvider === provider
-                      ? "bg-accent-primary text-white border-accent-primary"
-                      : "bg-surface-base text-text-muted border-surface-border hover:border-accent-primary/50",
-                  ].join(" ")}
-                >
-                  {PROVIDER_LABELS[provider]}
-                </button>
-              ))}
-            </div>
+            <select
+              data-testid="document-provider"
+              value={activeProvider}
+              onChange={(e) => {
+                setActiveProvider(e.target.value as SearchProvider);
+                setSearchInput("");
+                setDebouncedSearch("");
+                setShowDropdown(false);
+              }}
+              className="w-full border border-surface-border rounded-lg px-3 py-1.5 text-xs text-text-base bg-surface-base focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+            >
+              <option value="notion">Notion</option>
+              <option value="confluence">Confluence</option>
+            </select>
 
             {/* Attached docs list */}
             {displayDocs.length > 0 && (
               <ul className="flex flex-col gap-1 mb-1">
                 {displayDocs.map((doc) => (
-                  <li key={doc.id} className="flex items-center justify-between gap-2 text-xs bg-surface-base rounded-lg px-2 py-1.5 border border-surface-border">
+                  <li key={doc.id} data-testid="task-document" className="flex items-center justify-between gap-2 text-xs bg-surface-base rounded-lg px-2 py-1.5 border border-surface-border">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <a
                         href={doc.url}
@@ -604,6 +599,7 @@ export default function TaskFormModal() {
             ) : (
               <div ref={searchRef} className="relative">
                 <input
+                  data-testid="document-search"
                   type="text"
                   value={searchInput}
                   onChange={(e) => {
@@ -617,7 +613,7 @@ export default function TaskFormModal() {
 
                 {/* Dropdown */}
                 {showDropdown && debouncedSearch.length >= 2 && (
-                  <div className="absolute z-10 mt-1 w-full bg-surface-raised border border-surface-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div data-testid="document-search-results" className="absolute z-10 mt-1 w-full bg-surface-raised border border-surface-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {activeSearch.isLoading && (
                       <div className="px-3 py-2 text-xs text-text-muted">Searching…</div>
                     )}
@@ -630,6 +626,7 @@ export default function TaskFormModal() {
                     {activeSearchResults.map((result) => (
                       <button
                         key={result.id}
+                        data-testid="document-search-result"
                         type="button"
                         onMouseDown={(e) => { e.preventDefault(); handleSelectResult(result); }}
                         className="w-full text-left px-3 py-2 text-xs text-text-base hover:bg-surface-base transition-colors truncate"

@@ -54,7 +54,7 @@ export default function EventDetailModal() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
       onMouseDown={(e) => { if (e.target === e.currentTarget) closeDetailModal(); }}
     >
-      <div className="bg-surface-raised w-full max-w-sm rounded-xl shadow-xl border border-surface-border p-5 flex flex-col gap-3">
+      <div data-testid="event-detail" className="bg-surface-raised w-full max-w-sm rounded-xl shadow-xl border border-surface-border p-5 flex flex-col gap-3">
         {/* Header */}
         <div className="flex items-start gap-2">
           <h2 className="text-text-base font-semibold text-base leading-snug flex-1">{event.title}</h2>
@@ -189,7 +189,7 @@ export default function EventDetailModal() {
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Create Task
+            Add Task
           </button>
         </div>
       </div>

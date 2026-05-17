@@ -13,9 +13,9 @@ export const googleRoutes = new Hono<{ Bindings: Env }>();
 const SESSION_TTL_S = 60 * 60 * 24 * 7;
 
 function redirectUri(env: Env): string {
-  return env.ENVIRONMENT === "production"
-    ? "https://flowdocs-api.workers.dev/api/auth/google/callback"
-    : "http://localhost:8787/api/auth/google/callback";
+  return env.ENVIRONMENT === "development"
+    ? "http://localhost:8787/api/auth/google/callback"
+    : "https://flowdocs-api.jon-ldg85.workers.dev/api/auth/google/callback";
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -45,8 +45,8 @@ googleRoutes.get("/auth/google/callback", async (c) => {
     const { sessionId } = await googleAuth.handleCallback(code, state, c.env, redirectUri(c.env));
     setCookie(c, "session", sessionId, {
       httpOnly: true,
-      secure:   c.env.ENVIRONMENT === "production",
-      sameSite: "Lax",
+      secure:   true,
+      sameSite: "None",
       maxAge:   SESSION_TTL_S,
       path:     "/",
     });
