@@ -55,16 +55,13 @@ jobs:
 
       # Chromium covers: chromium + mobile-chrome (Pixel 5)
       # WebKit covers:   mobile-safari (iPhone 14)
-      # ubuntu-latest (24.04) ships with third-party PPAs (deadsnakes, ondrej,
-      # toolchain, etc.) that return 403 and abort `apt-get update`, which in
-      # turn prevents `playwright install --with-deps` from installing the
-      # system libraries WebKit needs. Wipe every .list/.sources file from
-      # sources.list.d — the base Ubuntu sources in /etc/apt/sources.list are
-      # untouched and are sufficient for all Playwright dependencies.
+      # ubuntu-latest (24.04) stores main repos in ubuntu.sources (DEB822 format).
+      # Third-party PPAs (deadsnakes, ondrej, toolchain-r, …) add .list files
+      # and some return 403, aborting apt-get update inside playwright install.
+      # Removing only .list files leaves ubuntu.sources intact so apt still works.
       - name: Install Playwright browsers
         run: |
-          sudo rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources || true
-          sudo apt-get update -q
+          sudo rm -f /etc/apt/sources.list.d/*.list || true
           pnpm exec playwright install --with-deps chromium webkit
         working-directory: packages/e2e
 
