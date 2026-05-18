@@ -38,7 +38,9 @@ When('I tap the sidebar close button', async ({ page }) => {
 });
 
 When('I tap outside the sidebar', async ({ page }) => {
-  await page.locator('[data-testid="sidebar-overlay"]').click();
+  // The overlay (z-index: 40) is behind the sidebar (z-index: 50, width: 220px).
+  // Click at x=300 which is to the right of the sidebar on both Pixel 5 (393px) and iPhone 14 (390px).
+  await page.locator('[data-testid="sidebar-overlay"]').click({ position: { x: 300, y: 400 } });
 });
 
 // ── Mobile navigation ─────────────────────────────────────────────────────────
