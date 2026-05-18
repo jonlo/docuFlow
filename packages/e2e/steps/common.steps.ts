@@ -70,10 +70,5 @@ Then('the calendar header matches the noted header', async ({ page, state }) => 
 // ── Shared task block precondition ────────────────────────────────────────────
 
 Given('a task block exists on the calendar', async ({ page }) => {
-  const taskBlock = page.locator('[data-testid="calendar-event"][data-task="true"]').first();
-  const count = await taskBlock.count();
-  if (count === 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (test as any).skip();
-  }
+  await page.locator('[data-testid="calendar-event"][data-task="true"]').first().waitFor({ timeout: 10_000 });
 });
