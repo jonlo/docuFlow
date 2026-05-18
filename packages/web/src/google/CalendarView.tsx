@@ -405,6 +405,8 @@ export function CalendarView(): JSX.Element {
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
           style={{ height: "100%" }}
+          scrollToTime={new Date(1970, 1, 1, 8)}
+          enableAutoScroll
           eventPropGetter={eventPropGetter}
           components={{ event: EventBlock, toolbar: CalendarToolbar }}
         />

@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "pretest": "bddgen",
-    "test": "dotenv -e .env -- playwright test",
+    "test": "playwright test",
+    "test:local": "dotenv -e .env -- playwright test",
     "test:ui": "dotenv -e .env -- playwright test --ui",
     "test:headed": "dotenv -e .env -- playwright test --headed"
   },

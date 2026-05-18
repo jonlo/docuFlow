@@ -73,6 +73,9 @@ interface AppState {
   documentPage: { id: string; title: string; url: string } | null;
   openDocumentPage: (doc: { id: string; title: string; url: string }) => void;
   closeDocumentPage: () => void;
+
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -142,6 +145,9 @@ export const useAppStore = create<AppState>()(
       documentPage: null,
       openDocumentPage: (doc) => set({ documentPage: doc }),
       closeDocumentPage: () => set({ documentPage: null }),
+
+      mobileSidebarOpen: false,
+      setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
     }),
     { name: "FlowDocs" }
   )

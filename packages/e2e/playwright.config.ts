@@ -4,17 +4,24 @@ import * as path from 'path';
 
 const repoRoot = path.resolve(__dirname, '../..');
 
+// In CI there is no wrangler/Worker available, so we use a tiny Node server
+// that passes the readiness check. All API responses are intercepted by
+// page.route() in fixtures/auth.ts and never reach the real server.
+const apiServerCommand = process.env['CI']
+  ? `node ${path.join(__dirname, 'mock-api-server.cjs')}`
+  : 'pnpm --filter @flowdocs/api dev';
+
+const commonBddConfig = {
+  steps: 'steps/**/*.ts',
+  importTestFrom: 'fixtures/auth.ts',
+};
+
 export default defineConfig({
-  testDir: defineBddConfig({
-    features: 'features/**/*.feature',
-    steps: 'steps/**/*.ts',
-    importTestFrom: 'fixtures/auth.ts',
-  }),
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
   workers: process.env['CI'] ? 1 : undefined,
-  reporter: 'html',
+  reporter: process.env['CI'] ? [['github'], ['list'], ['html']] : [['html']],
 
   use: {
     baseURL: 'http://localhost:5173',
@@ -25,6 +32,29 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testDir: defineBddConfig({
+        ...commonBddConfig,
+        features: 'features/desktop/**/*.feature',
+        outputDir: '.features-gen/desktop',
+      }),
+    },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+      testDir: defineBddConfig({
+        ...commonBddConfig,
+        features: 'features/mobile/**/*.feature',
+        outputDir: '.features-gen/mobile',
+      }),
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 14'] },
+      testDir: defineBddConfig({
+        ...commonBddConfig,
+        features: 'features/mobile/**/*.feature',
+        outputDir: '.features-gen/mobile',
+      }),
     },
   ],
 
@@ -37,7 +67,7 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: 'pnpm --filter @flowdocs/api dev',
+      command: apiServerCommand,
       url: 'http://localhost:8787/api/auth/status',
       cwd: repoRoot,
       reuseExistingServer: !process.env['CI'],

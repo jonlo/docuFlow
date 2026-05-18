@@ -16,6 +16,13 @@ Given('Google Calendar is disconnected', async ({ page }) => {
   await page.route('**/api/events*', route =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }),
   );
+  await page.route('**/api/auth/google/url*', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ url: 'https://accounts.google.com/o/oauth2/auth?client_id=test&scope=calendar' }),
+    }),
+  );
 });
 
 Given('Google Calendar is connected', async ({ page }) => {
@@ -50,8 +57,24 @@ Then('the connect Google Calendar button is not visible', async ({ page }) => {
 });
 
 Then('clicking the connect button opens a Google accounts popup', async ({ page }) => {
-  const popupPromise = page.waitForEvent('popup');
+  // Stub window.open so no real popup (and no real network request) is needed in CI.
+  // We just verify that clicking the button causes window.open to be called with the
+  // expected Google OAuth URL — that's the observable contract of this feature.
+  await page.evaluate(() => {
+    (window as unknown as Record<string, unknown>)['_capturedOpenUrl'] = null;
+    window.open = (url?: string | URL) => {
+      (window as unknown as Record<string, unknown>)['_capturedOpenUrl'] = String(url ?? '');
+      return null;
+    };
+  });
+
   await page.getByRole('button', { name: /connect google calendar/i }).click();
-  const popup = await popupPromise;
-  expect(popup.url()).toContain('accounts.google.com');
+
+  // Wait until window.open has been called (the app fetches the URL async before opening).
+  const capturedUrl = await page.waitForFunction(
+    () => (window as unknown as Record<string, unknown>)['_capturedOpenUrl'] as string | null,
+    { timeout: 10_000 },
+  );
+
+  expect(await capturedUrl.jsonValue()).toContain('accounts.google.com');
 });
