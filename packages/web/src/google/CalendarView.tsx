@@ -383,7 +383,7 @@ export function CalendarView(): JSX.Element {
 
   return (
     <div data-testid="calendar-view" className="flowdocs-calendar flex flex-col h-full p-4 gap-3">
-      <div className="flex items-center justify-end">
+      <div className="hidden sm:flex items-center justify-end">
         <button
           type="button"
           onClick={() => openTaskModal("create")}
