@@ -382,7 +382,16 @@ export function CalendarView(): JSX.Element {
   }
 
   return (
-    <div data-testid="calendar-view" className="flowdocs-calendar flex flex-col h-full">
+    <div data-testid="calendar-view" className="flowdocs-calendar flex flex-col h-full p-4 gap-3">
+      <div className="hidden md:flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => openTaskModal("create")}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary/90 transition-colors"
+        >
+          New Task
+        </button>
+      </div>
       <div className="flex-1 min-h-0">
         <Calendar
           localizer={localizer}

@@ -6,10 +6,7 @@ const { When, Then } = createBdd(test);
 // ── Task form ─────────────────────────────────────────────────────────────────
 
 When('I click the new task button', async ({ page }) => {
-  // "New Task" was removed from the calendar view; create via sidebar picker instead
-  await page.locator('[data-testid="sidebar"]').getByRole('button', { name: /new/i }).click();
-  await page.getByRole('button', { name: 'Task' }).click();
-  await page.locator('[data-testid="task-form"]').waitFor();
+  await page.getByRole('button', { name: /new task/i }).click();
 });
 
 Then('the task form is visible', async ({ page }) => {
