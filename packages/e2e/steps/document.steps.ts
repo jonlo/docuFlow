@@ -6,7 +6,7 @@ const { When, Then } = createBdd(test);
 // ── Document search ───────────────────────────────────────────────────────────
 
 Then('the document search input is visible', async ({ page }) => {
-  await page.locator('[data-testid="task-panel"]').waitFor();
+  await page.locator('[data-testid="task-form"]').waitFor();
   await expect(page.locator('[data-testid="document-search"]')).toBeVisible();
 });
 

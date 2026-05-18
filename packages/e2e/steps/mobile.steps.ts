@@ -58,6 +58,8 @@ When('I tap the New button in the sidebar', async ({ page }) => {
 When('I select Task from the new item picker', async ({ page }) => {
   // The picker dropdown shows "Task" (singular) as an option
   await page.getByRole('button', { name: 'Task' }).click();
+  // Wait for the task form modal to appear before the next step runs
+  await page.locator('[data-testid="task-form"]').waitFor();
 });
 
 // ── Page assertions ───────────────────────────────────────────────────────────
